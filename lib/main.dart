@@ -155,12 +155,39 @@ class _OrbiValvePageState extends State<OrbiValvePage> {
 						SizedBox(width: double.infinity, height: 52, child: ElevatedButton(onPressed: setValve, child: Text('SET VALVE TO $selectedPosition%', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)))),
 					]))),
 					const SizedBox(height: 20),
-					const Row(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.circle, size: 10, color: Colors.grey), SizedBox(width: 8), Text('Controller not connected', style: TextStyle(color: Colors.grey))]),
+                                        if (lastCommandJson.isNotEmpty)
+                                                Card(
+                                                        child: Padding(
+                                                                padding: const EdgeInsets.all(16),
+                                                                child: Column(
+                                                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                                                        children: [
+                                                                                const Text(
+                                                                                        'COMMAND JSON',
+                                                                                        style: TextStyle(
+                                                                                                fontSize: 16,
+                                                                                                fontWeight: FontWeight.bold,
+                                                                                        ),
+                                                                                ),
+                                                                                const SizedBox(height: 10),
+                                                                                SelectableText(
+                                                                                        lastCommandJson,
+                                                                                        style: const TextStyle(
+                                                                                                fontFamily: 'monospace',
+                                                                                                fontSize: 13,
+                                                                                        ),
+                                                                                ),
+                                                                        ],
+                                                                ),
+                                                        ),
+                                                ),
+                                        const SizedBox(height: 20),					const Row(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.circle, size: 10, color: Colors.grey), SizedBox(width: 8), Text('Controller not connected', style: TextStyle(color: Colors.grey))]),
 				]),
 			),
 		);
 	}
 }
+
 
 
 
