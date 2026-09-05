@@ -1,0 +1,153 @@
+﻿import 'dart:async';
+import 'package:flutter/material.dart';
+import 'valve_data.dart';
+void main() {
+	runApp(const OrbiValveApp());
+}
+
+class OrbiValveApp extends StatelessWidget {
+	const OrbiValveApp({super.key});
+
+	@override
+	Widget build(BuildContext context) {
+		return MaterialApp(
+			debugShowCheckedModeBanner: false,
+			title: 'ORBI Valve',
+			theme: ThemeData(
+				useMaterial3: true,
+				colorSchemeSeed: Colors.blue,
+			),
+			home: const OrbiValvePage(),
+		);
+	}
+}
+
+class OrbiValvePage extends StatefulWidget {
+	const OrbiValvePage({super.key});
+
+	@override
+	State<OrbiValvePage> createState() => _OrbiValvePageState();
+}
+
+class _OrbiValvePageState extends State<OrbiValvePage> {
+        int selectedPosition = 0;
+
+        ValveData valveData = const ValveData(
+                valveId: 'ORBI-001',
+                status: 'STOPPED',
+                requested: 0,
+                actual: 0,
+                connected: false,
+        );
+
+	int requestedPosition = 0;
+	int actualPosition = 0;
+	String status = 'STOPPED';
+	Timer? movementTimer;
+
+	void selectPosition(int value) {
+		setState(() => selectedPosition = value);
+	}
+
+	void setValve() {
+		movementTimer?.cancel();
+		setState(() {
+			requestedPosition = selectedPosition;
+			if (actualPosition < requestedPosition) {
+				status = 'OPENING';
+			} else if (actualPosition > requestedPosition) {
+				status = 'CLOSING';
+			} else {
+				status = 'STOPPED';
+			}
+		});
+
+		if (actualPosition == requestedPosition) return;
+
+		movementTimer = Timer.periodic(const Duration(milliseconds: 50), (timer) {
+			if (!mounted) {
+				timer.cancel();
+				return;
+			}
+			setState(() {
+				if (actualPosition < requestedPosition) {
+					actualPosition++;
+				} else if (actualPosition > requestedPosition) {
+					actualPosition--;
+				}
+				if (actualPosition == requestedPosition) {
+					status = 'STOPPED';
+					timer.cancel();
+				}
+			});
+		});
+	}
+
+	Widget positionButton(int value) {
+		final selected = selectedPosition == value;
+		return GestureDetector(
+			onTap: () => selectPosition(value),
+			child: Column(
+				children: [
+					Icon(selected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
+							size: 28, color: selected ? Colors.blue : Colors.grey),
+					const SizedBox(height: 5),
+					Text('$value%', style: TextStyle(fontWeight: selected ? FontWeight.bold : FontWeight.normal)),
+				],
+			),
+		);
+	}
+
+	Color statusColor() {
+		switch (status) {
+			case 'OPENING': return Colors.blue;
+			case 'CLOSING': return Colors.orange;
+			default: return Colors.green;
+		}
+	}
+
+	@override
+	void dispose() {
+		movementTimer?.cancel();
+		super.dispose();
+	}
+
+	@override
+	Widget build(BuildContext context) {
+		return Scaffold(
+			appBar: AppBar(title: const Text('ORBI Valve', style: TextStyle(fontWeight: FontWeight.bold)), centerTitle: true),
+			body: SingleChildScrollView(
+				padding: const EdgeInsets.all(20),
+				child: Column(children: [
+					Card(child: Padding(padding: const EdgeInsets.all(24), child: Column(children: [
+						const Text('VALVE STATUS', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+						const SizedBox(height: 10),
+						Text(status, style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: statusColor())),
+						const SizedBox(height: 25),
+						Row(children: [
+							Expanded(child: Column(children: [const Text('REQUESTED'), const SizedBox(height: 6), Text('$requestedPosition%', style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold))])),
+							Container(width: 1, height: 50, color: Colors.grey),
+							Expanded(child: Column(children: [const Text('ACTUAL'), const SizedBox(height: 6), Text('$actualPosition%', style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold))])),
+						]),
+					]))),
+					const SizedBox(height: 25),
+					Card(child: Padding(padding: const EdgeInsets.all(20), child: Column(children: [
+						const Text('VALVE OPENING', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+						const SizedBox(height: 15),
+						Text('$selectedPosition%', style: const TextStyle(fontSize: 46, fontWeight: FontWeight.bold)),
+						const SizedBox(height: 15),
+						Slider(value: selectedPosition.toDouble(), min: 0, max: 100, divisions: 4, label: '$selectedPosition%', onChanged: (value) => selectPosition(value.round())),
+						const SizedBox(height: 5),
+						Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [positionButton(0), positionButton(25), positionButton(50), positionButton(75), positionButton(100)]),
+						const SizedBox(height: 25),
+						SizedBox(width: double.infinity, height: 52, child: ElevatedButton(onPressed: setValve, child: Text('SET VALVE TO $selectedPosition%', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)))),
+					]))),
+					const SizedBox(height: 20),
+					const Row(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.circle, size: 10, color: Colors.grey), SizedBox(width: 8), Text('Controller not connected', style: TextStyle(color: Colors.grey))]),
+				]),
+			),
+		);
+	}
+}
+
+
