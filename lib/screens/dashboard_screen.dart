@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'operator_valves_screen.dart';
+
 /// Operator dashboard shell. Data/API integration is intentionally deferred
 /// until the backend contract is frozen.
 class DashboardScreen extends StatelessWidget {
@@ -7,6 +9,12 @@ class DashboardScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    void openValves() {
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(builder: (_) => const OperatorValvesScreen()),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('ORBI DRIVE'),
@@ -45,10 +53,14 @@ class DashboardScreen extends StatelessWidget {
             message: 'No live event data connected yet.',
           ),
           const SizedBox(height: 12),
-          const _SectionCard(
-            title: 'Valves',
-            icon: Icons.water_drop_outlined,
-            message: 'Valve list integration is the next navigation step.',
+          InkWell(
+            borderRadius: BorderRadius.circular(12),
+            onTap: openValves,
+            child: const _SectionCard(
+              title: 'Valves',
+              icon: Icons.water_drop_outlined,
+              message: 'Open assigned valve list',
+            ),
           ),
         ],
       ),
@@ -60,7 +72,9 @@ class DashboardScreen extends StatelessWidget {
           NavigationDestination(icon: Icon(Icons.map_outlined), label: 'Map'),
           NavigationDestination(icon: Icon(Icons.notifications_none), label: 'Alerts'),
         ],
-        onDestinationSelected: (_) {},
+        onDestinationSelected: (index) {
+          if (index == 1) openValves();
+        },
       ),
     );
   }
