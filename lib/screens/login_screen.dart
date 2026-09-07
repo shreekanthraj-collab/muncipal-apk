@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 
+import 'dashboard_screen.dart';
+
 /// Operator login UI foundation.
-///
-/// Real authentication is deliberately not implemented until the backend
-/// authentication/API contract is frozen.
+/// Real authentication remains deferred until the backend authentication
+/// contract is frozen. The current submit action only advances the UI flow.
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -27,8 +28,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
   void _submit() {
     if (!(_formKey.currentState?.validate() ?? false)) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Authentication service not connected yet.')),
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute<void>(builder: (_) => const DashboardScreen()),
     );
   }
 
