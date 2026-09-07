@@ -1,14 +1,53 @@
 import 'package:flutter/material.dart';
 
-class ValveDetailScreen extends StatelessWidget {
+class ValveDetailScreen extends StatefulWidget {
   const ValveDetailScreen({super.key, required this.valveId});
 
   final String valveId;
 
   @override
+  State<ValveDetailScreen> createState() => _ValveDetailScreenState();
+}
+
+class _ValveDetailScreenState extends State<ValveDetailScreen> {
+  String? _pendingCommand;
+
+  void _requestCommand(String command) {
+    setState(() => _pendingCommand = command);
+    showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Confirm $command'),
+        content: Text('Send $command command to ${widget.valveId}?'),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              setState(() => _pendingCommand = null);
+            },
+            child: const Text('CANCEL'),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.pop(context);
+              setState(() => _pendingCommand = null);
+              ScaffoldMessenger.of(this.context).showSnackBar(
+                SnackBar(content: Text('$command command UI ready; backend not connected.')),
+              );
+            },
+            child: const Text('CONFIRM'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final busy = _pendingCommand != null;
+
     return Scaffold(
-      appBar: AppBar(title: Text(valveId)),
+      appBar: AppBar(title: Text(widget.valveId)),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -20,11 +59,51 @@ class ValveDetailScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-          const Card(
-            child: ListTile(
-              leading: Icon(Icons.tune),
-              title: Text('CONTROL'),
-              subtitle: Text('Open / Close / Stop controls will be connected to the approved command contract.'),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Text('CONTROL', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: FilledButton.icon(
+                          onPressed: busy ? null : () => _requestCommand('OPEN'),
+                          icon: const Icon(Icons.arrow_upward),
+                          label: const Text('OPEN'),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: FilledButton.icon(
+                          onPressed: busy ? null : () => _requestCommand('CLOSE'),
+                          icon: const Icon(Icons.arrow_downward),
+                          label: const Text('CLOSE'),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  OutlinedButton.icon(
+                    onPressed: busy ? null : () => _requestCommand('STOP'),
+                    icon: const Icon(Icons.stop_circle_outlined),
+                    label: const Text('STOP'),
+                  ),
+                  const SizedBox(height: 8),
+                  FilledButton.tonalIcon(
+                    onPressed: busy ? null : () => _requestCommand('EMERGENCY STOP'),
+                    icon: const Icon(Icons.warning_amber_outlined),
+                    label: const Text('EMERGENCY STOP'),
+                  ),
+                  if (_pendingCommand != null) ...[
+                    const SizedBox(height: 12),
+                    Text('Preparing $_pendingCommand…', textAlign: TextAlign.center),
+                  ],
+                ],
+              ),
             ),
           ),
           const SizedBox(height: 12),
