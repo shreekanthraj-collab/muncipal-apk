@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
+import 'screens/operator_hub_screen.dart';
 
-import 'screens/splash_screen.dart';
-
-void main() {
-  runApp(const OrbiValveApp());
-}
+void main() => runApp(const OrbiValveApp());
 
 class OrbiValveApp extends StatelessWidget {
   const OrbiValveApp({super.key});
@@ -14,11 +11,8 @@ class OrbiValveApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'ORBI DRIVE Operator',
-      theme: ThemeData(
-        useMaterial3: true,
-        colorSchemeSeed: Colors.blue,
-      ),
-      home: const SplashScreen(),
+      theme: ThemeData(useMaterial3: true, colorSchemeSeed: Colors.blue),
+      home: const OperatorHubScreen(),
     );
   }
 }
