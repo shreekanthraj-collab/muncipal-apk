@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'valve_data.dart';
 import 'valve_command.dart';
+import 'services/aws_service.dart';
 import 'dart:convert';
 void main() {
 	runApp(const OrbiValveApp());
@@ -48,11 +49,13 @@ class _OrbiValvePageState extends State<OrbiValvePage> {
 	Timer? movementTimer;
         String lastCommandJson = '';
 
+        late final AwsService awsService;
+
 	void selectPosition(int value) {
 		setState(() => selectedPosition = value);
 	}
 
-	void setValve() {
+        Future<void> setValve() async {
                 final command = ValveCommand(
                         valveId: valveData.valveId,
                         command: 'SET_POSITION',
@@ -62,38 +65,71 @@ class _OrbiValvePageState extends State<OrbiValvePage> {
                 setState(() {
                         lastCommandJson = const JsonEncoder.withIndent('  ').convert(command.toJson());
                 });
-		movementTimer?.cancel();
-		setState(() {
-			requestedPosition = selectedPosition;
-			if (actualPosition < requestedPosition) {
-				status = 'OPENING';
-			} else if (actualPosition > requestedPosition) {
-				status = 'CLOSING';
-			} else {
-				status = 'STOPPED';
-			}
-		});
 
-		if (actualPosition == requestedPosition) return;
+                if (awsService.connected) {
+                        try {
+                                await awsService.sendCommand(command);
+                        } catch (error) {
+                                debugPrint('MQTT SET_POSITION failed: $error');
+                        }
+                }
 
-		movementTimer = Timer.periodic(const Duration(milliseconds: 50), (timer) {
-			if (!mounted) {
-				timer.cancel();
-				return;
-			}
-			setState(() {
-				if (actualPosition < requestedPosition) {
-					actualPosition++;
-				} else if (actualPosition > requestedPosition) {
-					actualPosition--;
-				}
-				if (actualPosition == requestedPosition) {
-					status = 'STOPPED';
-					timer.cancel();
-				}
-			});
-		});
-	}
+                movementTimer?.cancel();
+                setState(() {
+                        requestedPosition = selectedPosition;
+                        if (actualPosition < requestedPosition) {
+                                status = 'OPENING';
+                        } else if (actualPosition > requestedPosition) {
+                                status = 'CLOSING';
+                        } else {
+                                status = 'STOPPED';
+                        }
+                });
+
+                if (actualPosition == requestedPosition) return;
+
+                movementTimer = Timer.periodic(const Duration(milliseconds: 50), (timer) {
+                        if (!mounted) {
+                                timer.cancel();
+                                return;
+                        }
+                        setState(() {
+                                if (actualPosition < requestedPosition) {
+                                        actualPosition++;
+                                } else if (actualPosition > requestedPosition) {
+                                        actualPosition--;
+                                }
+                                if (actualPosition == requestedPosition) {
+                                        status = 'STOPPED';
+                                        timer.cancel();
+                                }
+                        });
+                });
+        }
+
+        Future<void> stopValve() async {
+                movementTimer?.cancel();
+                movementTimer = null;
+
+                final command = ValveCommand(
+                        valveId: valveData.valveId,
+                        command: 'STOP',
+                        value: 0,
+                );
+
+                setState(() {
+                        status = 'STOPPED';
+                        lastCommandJson = const JsonEncoder.withIndent('  ').convert(command.toJson());
+                });
+
+                if (awsService.connected) {
+                        try {
+                                await awsService.sendCommand(command);
+                        } catch (error) {
+                                debugPrint('MQTT STOP failed: $error');
+                        }
+                }
+        }
 
 	Widget positionButton(int value) {
 		final selected = selectedPosition == value;
@@ -153,6 +189,8 @@ class _OrbiValvePageState extends State<OrbiValvePage> {
 						Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [positionButton(0), positionButton(25), positionButton(50), positionButton(75), positionButton(100)]),
 						const SizedBox(height: 25),
 						SizedBox(width: double.infinity, height: 52, child: ElevatedButton(onPressed: setValve, child: Text('SET VALVE TO $selectedPosition%', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)))),
+                                                const SizedBox(height: 10),
+                                                SizedBox(width: double.infinity, height: 52, child: OutlinedButton(onPressed: stopValve, child: const Text('STOP VALVE', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)))),
 					]))),
 					const SizedBox(height: 20),
                                         if (lastCommandJson.isNotEmpty)
@@ -187,6 +225,13 @@ class _OrbiValvePageState extends State<OrbiValvePage> {
 		);
 	}
 }
+
+
+
+
+
+
+
 
 
 
