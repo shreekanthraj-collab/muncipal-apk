@@ -155,10 +155,23 @@ class _OrbiValvePageState extends State<OrbiValvePage> {
 	}
 
 	@override
-	void dispose() {
-		movementTimer?.cancel();
-		super.dispose();
-	}
+        @override
+        void initState() {
+                super.initState();
+
+                awsService = AwsService(
+                        host: 'YOUR_AWS_IOT_ENDPOINT',
+                        clientId: 'ORBI-APP',
+                        valveId: valveData.valveId,
+                );
+        }
+
+        @override
+        void dispose() {
+                movementTimer?.cancel();
+                awsService.dispose();
+                super.dispose();
+        }
 
 	@override
 	Widget build(BuildContext context) {
