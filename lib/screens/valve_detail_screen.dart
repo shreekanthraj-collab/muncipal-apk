@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../models/valve_data.dart';
 import '../models/valve_command.dart';
 import '../services/aws_service.dart';
+import '../widgets/valve_position_control.dart';
 import '../widgets/valve_status_card.dart';
 class ValveDetailScreen extends StatefulWidget {
 	const ValveDetailScreen({super.key});
@@ -180,20 +181,13 @@ class _ValveDetailScreenState extends State<ValveDetailScreen> {
                                                 actualPosition: actualPosition,
                                                 statusColor: statusColor(),
                                         ),const SizedBox(height: 25),
-					Card(child: Padding(padding: const EdgeInsets.all(20), child: Column(children: [
-						const Text('VALVE OPENING', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-						const SizedBox(height: 15),
-						Text('$selectedPosition%', style: const TextStyle(fontSize: 46, fontWeight: FontWeight.bold)),
-						const SizedBox(height: 15),
-						Slider(value: selectedPosition.toDouble(), min: 0, max: 100, divisions: 4, label: '$selectedPosition%', onChanged: (value) => selectPosition(value.round())),
-						const SizedBox(height: 5),
-						Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [positionButton(0), positionButton(25), positionButton(50), positionButton(75), positionButton(100)]),
-						const SizedBox(height: 25),
-						SizedBox(width: double.infinity, height: 52, child: ElevatedButton(onPressed: setValve, child: Text('SET VALVE TO $selectedPosition%', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)))),
-                                                const SizedBox(height: 10),
-                                                SizedBox(width: double.infinity, height: 52, child: OutlinedButton(onPressed: stopValve, child: const Text('STOP VALVE', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)))),
-					]))),
-					const SizedBox(height: 20),
+					ValvePositionControl(
+        selectedPosition: selectedPosition,
+        selectPosition: selectPosition,
+        positionButton: positionButton,
+        setValve: setValve,
+        stopValve: stopValve,
+),const SizedBox(height: 20),
                                         if (lastCommandJson.isNotEmpty)
                                                 Card(
                                                         child: Padding(
