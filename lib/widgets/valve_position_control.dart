@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 class ValvePositionControl extends StatelessWidget {
   final int selectedPosition;
   final ValueChanged<int> selectPosition;
-  final Widget Function(int position) positionButton;
   final VoidCallback setValve;
   final VoidCallback stopValve;
 
@@ -11,10 +10,40 @@ class ValvePositionControl extends StatelessWidget {
     super.key,
     required this.selectedPosition,
     required this.selectPosition,
-    required this.positionButton,
     required this.setValve,
     required this.stopValve,
   });
+
+  Widget _positionButton(int position) {
+    final selected = selectedPosition == position;
+
+    return Expanded(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 3),
+        child: OutlinedButton(
+          onPressed: () => selectPosition(position),
+          style: OutlinedButton.styleFrom(
+            minimumSize: const Size(0, 48),
+            side: BorderSide(
+              width: selected ? 2 : 1,
+            ),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+          child: Text(
+            '$position%',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: selected
+                  ? FontWeight.bold
+                  : FontWeight.normal,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -25,7 +54,10 @@ class ValvePositionControl extends StatelessWidget {
           children: [
             const Text(
               'VALVE OPENING',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const SizedBox(height: 15),
             Text(
@@ -41,18 +73,18 @@ class ValvePositionControl extends StatelessWidget {
               min: 0,
               max: 100,
               divisions: 4,
-              label: '%',
-              onChanged: (value) => selectPosition(value.round()),
+              label: '$selectedPosition%',
+              onChanged: (value) =>
+                  selectPosition(value.round()),
             ),
-            const SizedBox(height: 5),
+            const SizedBox(height: 8),
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                positionButton(0),
-                positionButton(25),
-                positionButton(50),
-                positionButton(75),
-                positionButton(100),
+                _positionButton(0),
+                _positionButton(25),
+                _positionButton(50),
+                _positionButton(75),
+                _positionButton(100),
               ],
             ),
             const SizedBox(height: 25),

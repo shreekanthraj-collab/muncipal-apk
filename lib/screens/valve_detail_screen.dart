@@ -184,7 +184,6 @@ class _ValveDetailScreenState extends State<ValveDetailScreen> {
 					ValvePositionControl(
         selectedPosition: selectedPosition,
         selectPosition: selectPosition,
-        positionButton: positionButton,
         setValve: setValve,
         stopValve: stopValve,
 ),const SizedBox(height: 20),
