@@ -6,14 +6,14 @@ import 'package:flutter/material.dart';
 import '../models/valve_data.dart';
 import '../models/valve_command.dart';
 import '../services/aws_service.dart';
-class OrbiValvePage extends StatefulWidget {
-	const OrbiValvePage({super.key});
+class ValveDetailScreen extends StatefulWidget {
+	const ValveDetailScreen({super.key});
 
 	@override
-	State<OrbiValvePage> createState() => _OrbiValvePageState();
+	State<ValveDetailScreen> createState() => _ValveDetailScreenState();
 }
 
-class _OrbiValvePageState extends State<OrbiValvePage> {
+class _ValveDetailScreenState extends State<ValveDetailScreen> {
         int selectedPosition = 0;
 
         ValveData valveData = const ValveData(
@@ -231,5 +231,3 @@ class _OrbiValvePageState extends State<OrbiValvePage> {
 		);
 	}
 }
-
-
