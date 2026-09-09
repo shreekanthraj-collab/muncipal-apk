@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../models/valve_data.dart';
 import '../models/valve_command.dart';
 import '../services/aws_service.dart';
+import '../widgets/valve_status_card.dart';
 class ValveDetailScreen extends StatefulWidget {
 	const ValveDetailScreen({super.key});
 
@@ -173,18 +174,12 @@ class _ValveDetailScreenState extends State<ValveDetailScreen> {
 			body: SingleChildScrollView(
 				padding: const EdgeInsets.all(20),
 				child: Column(children: [
-					Card(child: Padding(padding: const EdgeInsets.all(24), child: Column(children: [
-						const Text('VALVE STATUS', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-						const SizedBox(height: 10),
-						Text(status, style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: statusColor())),
-						const SizedBox(height: 25),
-						Row(children: [
-							Expanded(child: Column(children: [const Text('REQUESTED'), const SizedBox(height: 6), Text('$requestedPosition%', style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold))])),
-							Container(width: 1, height: 50, color: Colors.grey),
-							Expanded(child: Column(children: [const Text('ACTUAL'), const SizedBox(height: 6), Text('$actualPosition%', style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold))])),
-						]),
-					]))),
-					const SizedBox(height: 25),
+                                        ValveStatusCard(
+                                                status: status,
+                                                requestedPosition: requestedPosition,
+                                                actualPosition: actualPosition,
+                                                statusColor: statusColor(),
+                                        ),const SizedBox(height: 25),
 					Card(child: Padding(padding: const EdgeInsets.all(20), child: Column(children: [
 						const Text('VALVE OPENING', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
 						const SizedBox(height: 15),
