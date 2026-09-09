@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'valve_data.dart';
 import 'valve_command.dart';
@@ -50,6 +50,7 @@ class _OrbiValvePageState extends State<OrbiValvePage> {
         String lastCommandJson = '';
 
         late final AwsService awsService;
+        StreamSubscription<ValveData>? statusSubscription;
 
 	void selectPosition(int value) {
 		setState(() => selectedPosition = value);
@@ -164,11 +165,23 @@ class _OrbiValvePageState extends State<OrbiValvePage> {
                         clientId: 'ORBI-APP',
                         valveId: valveData.valveId,
                 );
+
+                statusSubscription = awsService.valveStatusStream.listen((data) {
+                        if (!mounted) return;
+
+                        setState(() {
+                                valveData = data;
+                                status = data.status;
+                                requestedPosition = data.requested;
+                                actualPosition = data.actual;
+                        });
+                });
         }
 
         @override
         void dispose() {
                 movementTimer?.cancel();
+                statusSubscription?.cancel();
                 awsService.dispose();
                 super.dispose();
         }
@@ -238,14 +251,3 @@ class _OrbiValvePageState extends State<OrbiValvePage> {
 		);
 	}
 }
-
-
-
-
-
-
-
-
-
-
-
