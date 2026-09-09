@@ -1,11 +1,11 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:mqtt_client/mqtt_client.dart';
 import 'package:mqtt_client/mqtt_server_client.dart';
 
-import '../valve_command.dart';
-import '../valve_data.dart';
+import '../models/valve_command.dart';
+import '../models/valve_data.dart';
 
 class AwsService {
   final String host;

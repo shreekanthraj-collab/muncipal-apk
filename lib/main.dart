@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'valve_data.dart';
-import 'valve_command.dart';
+import 'models/valve_data.dart';
+import 'models/valve_command.dart';
 import 'services/aws_service.dart';
 import 'dart:convert';
 void main() {
