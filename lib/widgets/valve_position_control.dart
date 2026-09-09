@@ -14,30 +14,34 @@ class ValvePositionControl extends StatelessWidget {
     required this.stopValve,
   });
 
-  Widget _positionButton(int position) {
+  Widget percentageButton(int position) {
     final selected = selectedPosition == position;
 
     return Expanded(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 3),
-        child: OutlinedButton(
-          onPressed: () => selectPosition(position),
-          style: OutlinedButton.styleFrom(
-            minimumSize: const Size(0, 48),
-            side: BorderSide(
-              width: selected ? 2 : 1,
+        child: SizedBox(
+          height: 44,
+          child: OutlinedButton(
+            onPressed: () => selectPosition(position),
+            style: OutlinedButton.styleFrom(
+              padding: EdgeInsets.zero,
+              backgroundColor:
+                  selected ? Colors.blue : Colors.transparent,
+              foregroundColor: selected ? Colors.white : Colors.blue,
+              side: BorderSide(
+                color: selected ? Colors.blue : Colors.grey,
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
             ),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-          ),
-          child: Text(
-            '$position%',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: selected
-                  ? FontWeight.bold
-                  : FontWeight.normal,
+            child: Text(
+              '$position%',
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
         ),
@@ -74,17 +78,16 @@ class ValvePositionControl extends StatelessWidget {
               max: 100,
               divisions: 4,
               label: '$selectedPosition%',
-              onChanged: (value) =>
-                  selectPosition(value.round()),
+              onChanged: (value) => selectPosition(value.round()),
             ),
             const SizedBox(height: 8),
             Row(
               children: [
-                _positionButton(0),
-                _positionButton(25),
-                _positionButton(50),
-                _positionButton(75),
-                _positionButton(100),
+                percentageButton(0),
+                percentageButton(25),
+                percentageButton(50),
+                percentageButton(75),
+                percentageButton(100),
               ],
             ),
             const SizedBox(height: 25),
