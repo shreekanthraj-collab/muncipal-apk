@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/valve_data.dart';
 import '../models/valve_command.dart';
+import '../models/valve_schedule.dart';
 import '../services/aws_service.dart';
 import '../widgets/valve_position_control.dart';
 import '../widgets/command_json_card.dart';
@@ -61,43 +62,34 @@ class _ValveDetailScreenState extends State<ValveDetailScreen> {
     setState(() {
       scheduleEnabled = enabled;
       schedulePosition = position;
-
-      if (hour != null && minute != null) {
-        scheduleTime = TimeOfDay(
-          hour: hour,
-          minute: minute,
-        );
-      }
+      scheduleTime = hour != null && minute != null
+          ? TimeOfDay(hour: hour, minute: minute)
+          : null;
     });
   }
 
   Future<void> _saveSchedule() async {
     final prefs = await SharedPreferences.getInstance();
 
-    await prefs.setBool(
-      '${_scheduleKey}_enabled',
-      scheduleEnabled,
-    );
+    await prefs.setBool('${_scheduleKey}_enabled', scheduleEnabled);
+    await prefs.setInt('${_scheduleKey}_position', schedulePosition);
 
-    await prefs.setInt(
-      '${_scheduleKey}_position',
-      schedulePosition,
-    );
-
-    if (scheduleTime != null) {
-      await prefs.setInt(
-        '${_scheduleKey}_hour',
-        scheduleTime!.hour,
-      );
-
-      await prefs.setInt(
-        '${_scheduleKey}_minute',
-        scheduleTime!.minute,
-      );
+    if (scheduleTime == null) {
+      await prefs.remove('${_scheduleKey}_hour');
+      await prefs.remove('${_scheduleKey}_minute');
+      return;
     }
+
+    await prefs.setInt('${_scheduleKey}_hour', scheduleTime!.hour);
+    await prefs.setInt('${_scheduleKey}_minute', scheduleTime!.minute);
   }
 
   Future<void> _setScheduleEnabled(bool value) async {
+    if (value && scheduleTime == null) {
+      await editSchedule();
+      return;
+    }
+
     setState(() {
       scheduleEnabled = value;
     });
@@ -209,6 +201,22 @@ class _ValveDetailScreenState extends State<ValveDetailScreen> {
     await _saveSchedule();
   }
 
+  Future<void> clearSchedule() async {
+    setState(() {
+      scheduleEnabled = false;
+      scheduleTime = null;
+      schedulePosition = 0;
+    });
+
+    await _saveSchedule();
+  }
+
+  ValveSchedule get _schedule => ValveSchedule(
+        enabled: scheduleEnabled,
+        time: scheduleTime,
+        position: schedulePosition,
+      );
+
   @override
   void initState() {
     super.initState();
@@ -221,10 +229,10 @@ class _ValveDetailScreenState extends State<ValveDetailScreen> {
       connected: false,
     );
 
-   awsService = AwsService(
-  clientId: 'ORBI-APP',
-  valveId: widget.valveId,
-);
+    awsService = AwsService(
+      clientId: 'ORBI-APP',
+      valveId: widget.valveId,
+    );
 
     statusSubscription = awsService.valveStatusStream.listen((data) {
       if (!mounted) return;
@@ -293,11 +301,20 @@ class _ValveDetailScreenState extends State<ValveDetailScreen> {
             ),
             const SizedBox(height: 20),
             ValveScheduleCard(
-              enabled: scheduleEnabled,
-              time: scheduleTime,
-              position: schedulePosition,
+              enabled: _schedule.enabled,
+              time: _schedule.time,
+              position: _schedule.position,
               onPressed: editSchedule,
               onEnabledChanged: _setScheduleEnabled,
+            ),
+            const SizedBox(height: 10),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton.icon(
+                onPressed: scheduleTime == null ? null : clearSchedule,
+                icon: const Icon(Icons.delete_outline),
+                label: const Text('CLEAR SCHEDULE'),
+              ),
             ),
             const SizedBox(height: 20),
             if (lastCommandJson.isNotEmpty)
