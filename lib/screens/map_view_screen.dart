@@ -5,6 +5,7 @@ import 'valve_detail_screen.dart';
 class MapViewScreen extends StatelessWidget {
   const MapViewScreen({super.key});
 
+  // Global valve map: GSM/LTE and LoRa valves are shown together.
   static const _valves = <_MapValve>[
     _MapValve(
       id: 'ORBI-001',
@@ -46,7 +47,9 @@ class MapViewScreen extends StatelessWidget {
   void _openValve(BuildContext context, _MapValve valve) {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => const ValveDetailScreen()),
+      MaterialPageRoute(
+        builder: (_) => ValveDetailScreen(),
+      ),
     );
   }
 
@@ -54,7 +57,10 @@ class MapViewScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('VALVE MAP', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text(
+          'VALVE MAP',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         centerTitle: true,
       ),
       body: Column(
@@ -77,8 +83,28 @@ class MapViewScreen extends StatelessWidget {
                     top: 12,
                     child: Card(
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
                         child: Text('${_valves.length} valves'),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    right: 12,
+                    top: 12,
+                    child: Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(8),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: const [
+                            Text('GSM/LTE'),
+                            SizedBox(height: 4),
+                            Text('LoRa'),
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -91,9 +117,14 @@ class MapViewScreen extends StatelessWidget {
             child: Column(
               children: _valves.map((valve) {
                 return ListTile(
-                  leading: Icon(Icons.location_on, color: _statusColor(valve.status)),
+                  leading: Icon(
+                    Icons.location_on,
+                    color: _statusColor(valve.status),
+                  ),
                   title: Text(valve.name),
-                  subtitle: Text('${valve.id} • ${valve.transport} • ${valve.status}'),
+                  subtitle: Text(
+                    '${valve.id} • ${valve.transport} • ${valve.status}',
+                  ),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => _openValve(context, valve),
                 );
@@ -114,12 +145,35 @@ class MapViewScreen extends StatelessWidget {
     final position = positions[valve.id] ?? const Offset(0.5, 0.5);
 
     return Positioned(
-      left: MediaQuery.sizeOf(context).width * position.dx - 12,
+      left: MediaQuery.sizeOf(context).width * position.dx - 42,
       top: 220 * position.dy,
-      child: IconButton(
-        tooltip: valve.name,
-        onPressed: () => _openValve(context, valve),
-        icon: Icon(Icons.location_on, size: 34, color: _statusColor(valve.status)),
+      child: GestureDetector(
+        onTap: () => _openValve(context, valve),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.location_on,
+              size: 34,
+              color: _statusColor(valve.status),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(4),
+                border: Border.all(color: Colors.grey.shade400),
+              ),
+              child: Text(
+                valve.transport,
+                style: const TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
