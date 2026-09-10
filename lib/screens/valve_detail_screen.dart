@@ -1,7 +1,8 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/valve_data.dart';
 import '../models/valve_command.dart';
@@ -41,8 +42,67 @@ class _ValveDetailScreenState extends State<ValveDetailScreen> {
   late final AwsService awsService;
   StreamSubscription<ValveData>? statusSubscription;
 
+  String get _scheduleKey => 'schedule_${widget.transport}_${widget.valveId}';
+
   void selectPosition(int value) {
     setState(() => selectedPosition = value);
+  }
+
+  Future<void> _loadSchedule() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    final enabled = prefs.getBool('${_scheduleKey}_enabled') ?? false;
+    final hour = prefs.getInt('${_scheduleKey}_hour');
+    final minute = prefs.getInt('${_scheduleKey}_minute');
+    final position = prefs.getInt('${_scheduleKey}_position') ?? 0;
+
+    if (!mounted) return;
+
+    setState(() {
+      scheduleEnabled = enabled;
+      schedulePosition = position;
+
+      if (hour != null && minute != null) {
+        scheduleTime = TimeOfDay(
+          hour: hour,
+          minute: minute,
+        );
+      }
+    });
+  }
+
+  Future<void> _saveSchedule() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    await prefs.setBool(
+      '${_scheduleKey}_enabled',
+      scheduleEnabled,
+    );
+
+    await prefs.setInt(
+      '${_scheduleKey}_position',
+      schedulePosition,
+    );
+
+    if (scheduleTime != null) {
+      await prefs.setInt(
+        '${_scheduleKey}_hour',
+        scheduleTime!.hour,
+      );
+
+      await prefs.setInt(
+        '${_scheduleKey}_minute',
+        scheduleTime!.minute,
+      );
+    }
+  }
+
+  Future<void> _setScheduleEnabled(bool value) async {
+    setState(() {
+      scheduleEnabled = value;
+    });
+
+    await _saveSchedule();
   }
 
   Future<void> setValve() async {
@@ -53,7 +113,8 @@ class _ValveDetailScreenState extends State<ValveDetailScreen> {
     );
 
     setState(() {
-      lastCommandJson = const JsonEncoder.withIndent('  ').convert(command.toJson());
+      lastCommandJson =
+          const JsonEncoder.withIndent('  ').convert(command.toJson());
       requestedPosition = selectedPosition;
       status = actualPosition < requestedPosition
           ? 'OPENING'
@@ -71,22 +132,28 @@ class _ValveDetailScreenState extends State<ValveDetailScreen> {
     }
 
     movementTimer?.cancel();
+
     if (actualPosition == requestedPosition) return;
 
-    movementTimer = Timer.periodic(const Duration(milliseconds: 50), (timer) {
-      if (!mounted) {
-        timer.cancel();
-        return;
-      }
-      setState(() {
-        if (actualPosition < requestedPosition) actualPosition++;
-        if (actualPosition > requestedPosition) actualPosition--;
-        if (actualPosition == requestedPosition) {
-          status = 'STOPPED';
+    movementTimer = Timer.periodic(
+      const Duration(milliseconds: 50),
+      (timer) {
+        if (!mounted) {
           timer.cancel();
+          return;
         }
-      });
-    });
+
+        setState(() {
+          if (actualPosition < requestedPosition) actualPosition++;
+          if (actualPosition > requestedPosition) actualPosition--;
+
+          if (actualPosition == requestedPosition) {
+            status = 'STOPPED';
+            timer.cancel();
+          }
+        });
+      },
+    );
   }
 
   Future<void> stopValve() async {
@@ -101,7 +168,8 @@ class _ValveDetailScreenState extends State<ValveDetailScreen> {
 
     setState(() {
       status = 'STOPPED';
-      lastCommandJson = const JsonEncoder.withIndent('  ').convert(command.toJson());
+      lastCommandJson =
+          const JsonEncoder.withIndent('  ').convert(command.toJson());
     });
 
     if (awsService.connected) {
@@ -115,9 +183,12 @@ class _ValveDetailScreenState extends State<ValveDetailScreen> {
 
   Color statusColor() {
     switch (status) {
-      case 'OPENING': return Colors.blue;
-      case 'CLOSING': return Colors.orange;
-      default: return Colors.green;
+      case 'OPENING':
+        return Colors.blue;
+      case 'CLOSING':
+        return Colors.orange;
+      default:
+        return Colors.green;
     }
   }
 
@@ -126,6 +197,7 @@ class _ValveDetailScreenState extends State<ValveDetailScreen> {
       context: context,
       initialTime: scheduleTime ?? TimeOfDay.now(),
     );
+
     if (!mounted || pickedTime == null) return;
 
     setState(() {
@@ -133,11 +205,14 @@ class _ValveDetailScreenState extends State<ValveDetailScreen> {
       schedulePosition = selectedPosition;
       scheduleEnabled = true;
     });
+
+    await _saveSchedule();
   }
 
   @override
   void initState() {
     super.initState();
+
     valveData = ValveData(
       valveId: widget.valveId,
       status: 'STOPPED',
@@ -154,6 +229,7 @@ class _ValveDetailScreenState extends State<ValveDetailScreen> {
 
     statusSubscription = awsService.valveStatusStream.listen((data) {
       if (!mounted) return;
+
       setState(() {
         valveData = data;
         status = data.status;
@@ -162,6 +238,8 @@ class _ValveDetailScreenState extends State<ValveDetailScreen> {
         selectedPosition = data.requested;
       });
     });
+
+    _loadSchedule();
   }
 
   @override
@@ -176,14 +254,23 @@ class _ValveDetailScreenState extends State<ValveDetailScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('ORBI Valve  ${widget.transport}', style: const TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(
+          'ORBI Valve  ${widget.transport}',
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
         centerTitle: true,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
-            Text(widget.valveId, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            Text(
+              widget.valveId,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
             const SizedBox(height: 15),
             ValveStatusCard(
               status: status,
@@ -211,17 +298,29 @@ class _ValveDetailScreenState extends State<ValveDetailScreen> {
               time: scheduleTime,
               position: schedulePosition,
               onPressed: editSchedule,
-              onEnabledChanged: (value) => setState(() => scheduleEnabled = value),
+              onEnabledChanged: _setScheduleEnabled,
             ),
             const SizedBox(height: 20),
-            if (lastCommandJson.isNotEmpty) CommandJsonCard(commandJson: lastCommandJson),
+            if (lastCommandJson.isNotEmpty)
+              CommandJsonCard(commandJson: lastCommandJson),
             const SizedBox(height: 20),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.circle, size: 10, color: valveData.connected ? Colors.green : Colors.grey),
+                Icon(
+                  Icons.circle,
+                  size: 10,
+                  color: valveData.connected
+                      ? Colors.green
+                      : Colors.grey,
+                ),
                 const SizedBox(width: 8),
-                Text(valveData.connected ? 'Controller connected' : 'Controller not connected', style: const TextStyle(color: Colors.grey)),
+                Text(
+                  valveData.connected
+                      ? 'Controller connected'
+                      : 'Controller not connected',
+                  style: const TextStyle(color: Colors.grey),
+                ),
               ],
             ),
           ],
