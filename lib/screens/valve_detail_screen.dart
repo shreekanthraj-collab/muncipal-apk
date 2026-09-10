@@ -113,6 +113,10 @@ class _ValveDetailScreenState extends State<ValveDetailScreen> {
     if (mounted) setState(() => status = 'STOPPED');
   }
 
+  Future<void> _requestStatus() async {
+    await _sendCommand('GET_STATUS');
+  }
+
   Future<void> _numberCommand(String command, String title, int initial) async {
     final controller = TextEditingController(text: '$initial');
     final value = await showDialog<int>(
@@ -229,7 +233,13 @@ class _ValveDetailScreenState extends State<ValveDetailScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            ValveStatusCard(status: status, requestedPosition: requestedPosition, actualPosition: actualPosition, statusColor: statusColor()),
+            ValveStatusCard(
+              status: status,
+              requestedPosition: requestedPosition,
+              actualPosition: actualPosition,
+              statusColor: statusColor(),
+              onRequestStatus: _requestStatus,
+            ),
             const SizedBox(height: 16),
             ValvePositionControl(selectedPosition: selectedPosition, selectPosition: selectPosition, setValve: setValve, stopValve: stopValve),
             const SizedBox(height: 16),
@@ -237,7 +247,7 @@ class _ValveDetailScreenState extends State<ValveDetailScreen> {
               _actionButton(label: 'OPEN VALVE', icon: Icons.keyboard_arrow_up, onPressed: () => _sendCommand('OPEN', 0), primary: true),
               _actionButton(label: 'CLOSE VALVE', icon: Icons.keyboard_arrow_down, onPressed: () => _sendCommand('CLOSE', 0)),
               _actionButton(label: 'STOP VALVE', icon: Icons.stop_circle, onPressed: stopValve),
-              _actionButton(label: 'GET STATUS', icon: Icons.refresh, onPressed: () => _sendCommand('GET_STATUS')),
+              _actionButton(label: 'GET STATUS', icon: Icons.refresh, onPressed: _requestStatus),
               _actionButton(label: 'CLEAR FAULT', icon: Icons.restart_alt, onPressed: () => _sendCommand('CLEAR_FAULT')),
             ]),
             const SizedBox(height: 12),
