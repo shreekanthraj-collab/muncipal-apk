@@ -76,12 +76,13 @@ class _MapViewScreenState extends State<MapViewScreen> {
   Future<void> _addValveFromGps() async {
     if (_adding) return;
     setState(() => _adding = true);
+    final nameController = TextEditingController();
     try {
       final position = await _getGpsPosition();
       if (position == null || !mounted) return;
 
       final nextNumber = _valves.length + 1;
-      final nameController = TextEditingController(text: 'Valve $nextNumber');
+      nameController.text = 'Valve $nextNumber';
       var transport = 'GSM/LTE';
 
       final result = await showDialog<_MapValve>(
@@ -98,7 +99,7 @@ class _MapViewScreenState extends State<MapViewScreen> {
               const SizedBox(height: 12),
               StatefulBuilder(
                 builder: (context, setDialogState) => DropdownButtonFormField<String>(
-                  value: transport,
+                  initialValue: transport,
                   decoration: const InputDecoration(labelText: 'Connection'),
                   items: const [
                     DropdownMenuItem(value: 'GSM/LTE', child: Text('GSM/LTE')),
@@ -132,7 +133,7 @@ class _MapViewScreenState extends State<MapViewScreen> {
         await _message('${result.name} added to the map at the phone GPS location.');
       }
     } finally {
-      nameControllerCleanup:
+      nameController.dispose();
       if (mounted) setState(() => _adding = false);
     }
   }
