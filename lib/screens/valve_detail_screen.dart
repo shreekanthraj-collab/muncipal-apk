@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -9,189 +9,240 @@ import '../services/aws_service.dart';
 import '../widgets/valve_position_control.dart';
 import '../widgets/command_json_card.dart';
 import '../widgets/valve_status_card.dart';
-class ValveDetailScreen extends StatefulWidget {
-	const ValveDetailScreen({super.key});
 
-	@override
-	State<ValveDetailScreen> createState() => _ValveDetailScreenState();
+class ValveDetailScreen extends StatefulWidget {
+  final String transport;
+  final String valveId;
+
+  const ValveDetailScreen({
+    super.key,
+    required this.transport,
+    required this.valveId,
+  });
+
+  @override
+  State<ValveDetailScreen> createState() => _ValveDetailScreenState();
 }
 
 class _ValveDetailScreenState extends State<ValveDetailScreen> {
-        int selectedPosition = 0;
+  int selectedPosition = 0;
 
-        ValveData valveData = const ValveData(
-                valveId: 'ORBI-001',
-                status: 'STOPPED',
-                requested: 0,
-                actual: 0,
-                connected: false,
-        );
+  late ValveData valveData;
 
-	int requestedPosition = 0;
-	int actualPosition = 0;
-	String status = 'STOPPED';
-	Timer? movementTimer;
-        String lastCommandJson = '';
+  int requestedPosition = 0;
+  int actualPosition = 0;
+  String status = 'STOPPED';
+  Timer? movementTimer;
+  String lastCommandJson = '';
 
-        late final AwsService awsService;
-        StreamSubscription<ValveData>? statusSubscription;
+  late final AwsService awsService;
+  StreamSubscription<ValveData>? statusSubscription;
 
-	void selectPosition(int value) {
-		setState(() => selectedPosition = value);
-	}
+  void selectPosition(int value) {
+    setState(() {
+      selectedPosition = value;
+    });
+  }
 
-        Future<void> setValve() async {
-                final command = ValveCommand(
-                        valveId: valveData.valveId,
-                        command: 'SET_POSITION',
-                        value: selectedPosition,
-                );
+  Future<void> setValve() async {
+    final command = ValveCommand(
+      valveId: valveData.valveId,
+      command: 'SET_POSITION',
+      value: selectedPosition,
+    );
 
-                setState(() {
-                        lastCommandJson = const JsonEncoder.withIndent('  ').convert(command.toJson());
-                });
+    setState(() {
+      lastCommandJson =
+          const JsonEncoder.withIndent('  ').convert(command.toJson());
+      requestedPosition = selectedPosition;
 
-                if (awsService.connected) {
-                        try {
-                                await awsService.sendCommand(command);
-                        } catch (error) {
-                                debugPrint('MQTT SET_POSITION failed: $error');
-                        }
-                }
+      if (actualPosition < requestedPosition) {
+        status = 'OPENING';
+      } else if (actualPosition > requestedPosition) {
+        status = 'CLOSING';
+      } else {
+        status = 'STOPPED';
+      }
+    });
 
-                movementTimer?.cancel();
-                setState(() {
-                        requestedPosition = selectedPosition;
-                        if (actualPosition < requestedPosition) {
-                                status = 'OPENING';
-                        } else if (actualPosition > requestedPosition) {
-                                status = 'CLOSING';
-                        } else {
-                                status = 'STOPPED';
-                        }
-                });
+    if (awsService.connected) {
+      try {
+        await awsService.sendCommand(command);
+      } catch (error) {
+        debugPrint('MQTT SET_POSITION failed: $error');
+      }
+    }
 
-                if (actualPosition == requestedPosition) return;
+    movementTimer?.cancel();
 
-                movementTimer = Timer.periodic(const Duration(milliseconds: 50), (timer) {
-                        if (!mounted) {
-                                timer.cancel();
-                                return;
-                        }
-                        setState(() {
-                                if (actualPosition < requestedPosition) {
-                                        actualPosition++;
-                                } else if (actualPosition > requestedPosition) {
-                                        actualPosition--;
-                                }
-                                if (actualPosition == requestedPosition) {
-                                        status = 'STOPPED';
-                                        timer.cancel();
-                                }
-                        });
-                });
+    if (actualPosition == requestedPosition) {
+      return;
+    }
+
+    movementTimer = Timer.periodic(
+      const Duration(milliseconds: 50),
+      (timer) {
+        if (!mounted) {
+          timer.cancel();
+          return;
         }
 
-        Future<void> stopValve() async {
-                movementTimer?.cancel();
-                movementTimer = null;
+        setState(() {
+          if (actualPosition < requestedPosition) {
+            actualPosition++;
+          } else if (actualPosition > requestedPosition) {
+            actualPosition--;
+          }
 
-                final command = ValveCommand(
-                        valveId: valveData.valveId,
-                        command: 'STOP',
-                        value: 0,
-                );
+          if (actualPosition == requestedPosition) {
+            status = 'STOPPED';
+            timer.cancel();
+          }
+        });
+      },
+    );
+  }
 
-                setState(() {
-                        status = 'STOPPED';
-                        lastCommandJson = const JsonEncoder.withIndent('  ').convert(command.toJson());
-                });
+  Future<void> stopValve() async {
+    movementTimer?.cancel();
+    movementTimer = null;
 
-                if (awsService.connected) {
-                        try {
-                                await awsService.sendCommand(command);
-                        } catch (error) {
-                                debugPrint('MQTT STOP failed: $error');
-                        }
-                }
-        }
+    final command = ValveCommand(
+      valveId: valveData.valveId,
+      command: 'STOP',
+      value: 0,
+    );
 
-	Widget positionButton(int value) {
-		final selected = selectedPosition == value;
-		return GestureDetector(
-			onTap: () => selectPosition(value),
-			child: Column(
-				children: [
-					Icon(selected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
-							size: 28, color: selected ? Colors.blue : Colors.grey),
-					const SizedBox(height: 5),
-					Text('$value%', style: TextStyle(fontWeight: selected ? FontWeight.bold : FontWeight.normal)),
-				],
-			),
-		);
-	}
+    setState(() {
+      status = 'STOPPED';
+      lastCommandJson =
+          const JsonEncoder.withIndent('  ').convert(command.toJson());
+    });
 
-	Color statusColor() {
-		switch (status) {
-			case 'OPENING': return Colors.blue;
-			case 'CLOSING': return Colors.orange;
-			default: return Colors.green;
-		}
-	}
+    if (awsService.connected) {
+      try {
+        await awsService.sendCommand(command);
+      } catch (error) {
+        debugPrint('MQTT STOP failed: $error');
+      }
+    }
+  }
 
-	@override
-        void initState() {
-                super.initState();
+  Color statusColor() {
+    switch (status) {
+      case 'OPENING':
+        return Colors.blue;
+      case 'CLOSING':
+        return Colors.orange;
+      default:
+        return Colors.green;
+    }
+  }
 
-                awsService = AwsService(
-                        host: 'YOUR_AWS_IOT_ENDPOINT',
-                        clientId: 'ORBI-APP',
-                        valveId: valveData.valveId,
-                );
+  @override
+  void initState() {
+    super.initState();
+    valveData = ValveData(
+      valveId: widget.valveId,
+      status: 'STOPPED',
+      requested: 0,
+      actual: 0,
+      connected: false,
+    );
 
-                statusSubscription = awsService.valveStatusStream.listen((data) {
-                        if (!mounted) return;
+    selectedPosition = 0;
+    awsService = AwsService(
+      host: 'YOUR_AWS_IOT_ENDPOINT',
+      clientId: 'ORBI-APP',
+      valveId: widget.valveId,
+    );
 
-                        setState(() {
-                                valveData = data;
-                                status = data.status;
-                                requestedPosition = data.requested;
-                                actualPosition = data.actual;
-                        });
-                });
-        }
+    statusSubscription = awsService.valveStatusStream.listen((data) {
+      if (!mounted) {
+        return;
+      }
 
-        @override
-        void dispose() {
-                movementTimer?.cancel();
-                statusSubscription?.cancel();
-                awsService.dispose();
-                super.dispose();
-        }
+      setState(() {
+        valveData = data;
+        status = data.status;
+        requestedPosition = data.requested;
+        actualPosition = data.actual;
+        selectedPosition = data.requested;
+      });
+    });
+  }
 
-	@override
-	Widget build(BuildContext context) {
-		return Scaffold(
-			appBar: AppBar(title: const Text('ORBI Valve', style: TextStyle(fontWeight: FontWeight.bold)), centerTitle: true),
-			body: SingleChildScrollView(
-				padding: const EdgeInsets.all(20),
-				child: Column(children: [
-                                        ValveStatusCard(
-                                                status: status,
-                                                requestedPosition: requestedPosition,
-                                                actualPosition: actualPosition,
-                                                statusColor: statusColor(),
-                                        ),const SizedBox(height: 25),
-					ValvePositionControl(
-        selectedPosition: selectedPosition,
-        selectPosition: selectPosition,
-        setValve: setValve,
-        stopValve: stopValve,
-),const SizedBox(height: 20),
-                                        if (lastCommandJson.isNotEmpty)
-                                                CommandJsonCard(commandJson: lastCommandJson),                                        const SizedBox(height: 20),					const Row(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.circle, size: 10, color: Colors.grey), SizedBox(width: 8), Text('Controller not connected', style: TextStyle(color: Colors.grey))]),
-				]),
-			),
-		);
-	}
+  @override
+  void dispose() {
+    movementTimer?.cancel();
+    statusSubscription?.cancel();
+    awsService.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(
+          'ORBI Valve  ${widget.transport}',
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        centerTitle: true,
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          children: [
+            Text(
+              widget.valveId,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 15),
+            ValveStatusCard(
+              status: status,
+              requestedPosition: requestedPosition,
+              actualPosition: actualPosition,
+              statusColor: statusColor(),
+            ),
+            const SizedBox(height: 25),
+            ValvePositionControl(
+              selectedPosition: selectedPosition,
+              selectPosition: selectPosition,
+              setValve: setValve,
+              stopValve: stopValve,
+            ),
+            const SizedBox(height: 20),
+            if (lastCommandJson.isNotEmpty)
+              CommandJsonCard(
+                commandJson: lastCommandJson,
+              ),
+            const SizedBox(height: 20),
+            const Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.circle,
+                  size: 10,
+                  color: Colors.grey,
+                ),
+                SizedBox(width: 8),
+                Text(
+                  'Controller not connected',
+                  style: TextStyle(
+                    color: Colors.grey,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
 class ValvePositionControl extends StatelessWidget {
   final int selectedPosition;
@@ -96,9 +96,9 @@ class ValvePositionControl extends StatelessWidget {
               height: 52,
               child: ElevatedButton(
                 onPressed: setValve,
-                child: Text(
-                  'SET VALVE TO $selectedPosition%',
-                  style: const TextStyle(
+                child: const Text(
+                  'SET VALVE',
+                  style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                   ),
