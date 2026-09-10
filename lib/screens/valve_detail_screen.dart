@@ -156,8 +156,7 @@ class _ValveDetailScreenState extends State<ValveDetailScreen> {
 
   Future<void> _scheduleDialog() async {
     int slot = 1;
-    int hour = 8;
-    int minute = 0;
+    TimeOfDay selectedTime = const TimeOfDay(hour: 8, minute: 0);
     int action = 1;
 
     await showDialog<void>(
@@ -169,23 +168,45 @@ class _ValveDetailScreenState extends State<ValveDetailScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               DropdownButtonFormField<int>(
-                value: slot,
+                initialValue: slot,
                 decoration: const InputDecoration(labelText: 'Slot'),
-                items: List.generate(8, (i) => DropdownMenuItem(value: i + 1, child: Text('Slot ${i + 1}'))),
+                items: List.generate(
+                  8,
+                  (i) => DropdownMenuItem(
+                    value: i + 1,
+                    child: Text('Slot ${i + 1}'),
+                  ),
+                ),
                 onChanged: (v) => setDialogState(() => slot = v ?? 1),
               ),
-              TextField(
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(labelText: 'Hour (0-23)'),
-                onChanged: (v) => hour = int.tryParse(v) ?? hour,
+              const SizedBox(height: 8),
+              InkWell(
+                borderRadius: BorderRadius.circular(4),
+                onTap: () async {
+                  final picked = await showTimePicker(
+                    context: context,
+                    initialTime: selectedTime,
+                    helpText: 'SELECT SCHEDULE TIME',
+                  );
+                  if (picked != null) {
+                    setDialogState(() => selectedTime = picked);
+                  }
+                },
+                child: InputDecorator(
+                  decoration: const InputDecoration(
+                    labelText: 'Time',
+                    border: UnderlineInputBorder(),
+                    suffixIcon: Icon(Icons.access_time),
+                  ),
+                  child: Text(
+                    selectedTime.format(context),
+                    style: const TextStyle(fontSize: 18),
+                  ),
+                ),
               ),
-              TextField(
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(labelText: 'Minute (0-59)'),
-                onChanged: (v) => minute = int.tryParse(v) ?? minute,
-              ),
+              const SizedBox(height: 8),
               DropdownButtonFormField<int>(
-                value: action,
+                initialValue: action,
                 decoration: const InputDecoration(labelText: 'Action'),
                 items: const [
                   DropdownMenuItem(value: 1, child: Text('OPEN')),
@@ -196,10 +217,15 @@ class _ValveDetailScreenState extends State<ValveDetailScreen> {
             ],
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('CANCEL')),
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('CANCEL'),
+            ),
             ElevatedButton(
               onPressed: () {
                 Navigator.pop(context);
+                final hour = selectedTime.hour;
+                final minute = selectedTime.minute;
                 final packed = ((slot & 0x0F) << 12) |
                     ((action & 0x03) << 10) |
                     ((hour & 0x1F) << 5) |
