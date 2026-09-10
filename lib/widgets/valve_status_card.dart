@@ -5,6 +5,7 @@ class ValveStatusCard extends StatelessWidget {
   final int requestedPosition;
   final int actualPosition;
   final Color statusColor;
+  final VoidCallback onRequestStatus;
 
   const ValveStatusCard({
     super.key,
@@ -12,29 +13,59 @@ class ValveStatusCard extends StatelessWidget {
     required this.requestedPosition,
     required this.actualPosition,
     required this.statusColor,
+    required this.onRequestStatus,
   });
 
   @override
   Widget build(BuildContext context) {
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(20),
         child: Column(
           children: [
-            const Text(
-              'VALVE STATUS',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Expanded(
+                  child: Column(
+                    children: [
+                      const Text(
+                        'VALVE STATUS',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        status,
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: statusColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                SizedBox(
+                  width: 125,
+                  height: 54,
+                  child: ElevatedButton(
+                    onPressed: onRequestStatus,
+                    child: const Text(
+                      'REQUEST\nSTATUS',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 10),
-            Text(
-              status,
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: statusColor,
-              ),
-            ),
-            const SizedBox(height: 25),
+            const SizedBox(height: 20),
+            const Divider(height: 1),
+            const SizedBox(height: 18),
             Row(
               children: [
                 Expanded(
