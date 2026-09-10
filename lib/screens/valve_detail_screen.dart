@@ -3,195 +3,345 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 
-import '../models/valve_data.dart';
 import '../models/valve_command.dart';
+import '../models/valve_data.dart';
 import '../services/aws_service.dart';
-import '../widgets/valve_position_control.dart';
 import '../widgets/command_json_card.dart';
+import '../widgets/valve_position_control.dart';
 import '../widgets/valve_status_card.dart';
-class ValveDetailScreen extends StatefulWidget {
-	const ValveDetailScreen({super.key});
 
-	@override
-	State<ValveDetailScreen> createState() => _ValveDetailScreenState();
+class ValveDetailScreen extends StatefulWidget {
+  const ValveDetailScreen({super.key});
+
+  @override
+  State<ValveDetailScreen> createState() => _ValveDetailScreenState();
 }
 
 class _ValveDetailScreenState extends State<ValveDetailScreen> {
-        int selectedPosition = 0;
+  int selectedPosition = 0;
+  int requestedPosition = 0;
+  int actualPosition = 0;
+  String status = 'STOPPED';
+  String lastCommandJson = '';
+  Timer? movementTimer;
 
-        ValveData valveData = const ValveData(
-                valveId: 'ORBI-001',
-                status: 'STOPPED',
-                requested: 0,
-                actual: 0,
-                connected: false,
-        );
+  late final AwsService awsService;
+  StreamSubscription<ValveData>? statusSubscription;
 
-	int requestedPosition = 0;
-	int actualPosition = 0;
-	String status = 'STOPPED';
-	Timer? movementTimer;
-        String lastCommandJson = '';
+  ValveData valveData = const ValveData(
+    valveId: 'ORBI-001',
+    status: 'STOPPED',
+    requested: 0,
+    actual: 0,
+    connected: false,
+  );
 
-        late final AwsService awsService;
-        StreamSubscription<ValveData>? statusSubscription;
+  @override
+  void initState() {
+    super.initState();
 
-	void selectPosition(int value) {
-		setState(() => selectedPosition = value);
-	}
+    awsService = AwsService(
+      host: 'YOUR_AWS_IOT_ENDPOINT',
+      clientId: 'ORBI-APP',
+      valveId: valveData.valveId,
+    );
 
-        Future<void> setValve() async {
-                final command = ValveCommand(
-                        valveId: valveData.valveId,
-                        command: 'SET_POSITION',
-                        value: selectedPosition,
-                );
+    statusSubscription = awsService.valveStatusStream.listen((data) {
+      if (!mounted) return;
+      setState(() {
+        valveData = data;
+        status = data.status;
+        requestedPosition = data.requested;
+        actualPosition = data.actual;
+      });
+    });
+  }
 
-                setState(() {
-                        lastCommandJson = const JsonEncoder.withIndent('  ').convert(command.toJson());
-                });
+  @override
+  void dispose() {
+    movementTimer?.cancel();
+    statusSubscription?.cancel();
+    awsService.dispose();
+    super.dispose();
+  }
 
-                if (awsService.connected) {
-                        try {
-                                await awsService.sendCommand(command);
-                        } catch (error) {
-                                debugPrint('MQTT SET_POSITION failed: $error');
-                        }
-                }
+  void selectPosition(int value) {
+    setState(() => selectedPosition = value);
+  }
 
-                movementTimer?.cancel();
-                setState(() {
-                        requestedPosition = selectedPosition;
-                        if (actualPosition < requestedPosition) {
-                                status = 'OPENING';
-                        } else if (actualPosition > requestedPosition) {
-                                status = 'CLOSING';
-                        } else {
-                                status = 'STOPPED';
-                        }
-                });
+  Future<void> _sendCommand(String command, [int value = 0]) async {
+    final request = ValveCommand(
+      valveId: valveData.valveId,
+      command: command,
+      value: value,
+    );
 
-                if (actualPosition == requestedPosition) return;
+    setState(() {
+      lastCommandJson = const JsonEncoder.withIndent('  ').convert(request.toJson());
+    });
 
-                movementTimer = Timer.periodic(const Duration(milliseconds: 50), (timer) {
-                        if (!mounted) {
-                                timer.cancel();
-                                return;
-                        }
-                        setState(() {
-                                if (actualPosition < requestedPosition) {
-                                        actualPosition++;
-                                } else if (actualPosition > requestedPosition) {
-                                        actualPosition--;
-                                }
-                                if (actualPosition == requestedPosition) {
-                                        status = 'STOPPED';
-                                        timer.cancel();
-                                }
-                        });
-                });
+    if (!awsService.connected) return;
+
+    try {
+      await awsService.sendCommand(request);
+    } catch (error) {
+      debugPrint('MQTT $command failed: $error');
+    }
+  }
+
+  Future<void> setValve() async {
+    await _sendCommand('SET_POSITION', selectedPosition);
+
+    movementTimer?.cancel();
+    setState(() {
+      requestedPosition = selectedPosition;
+      status = actualPosition < requestedPosition
+          ? 'OPENING'
+          : actualPosition > requestedPosition
+              ? 'CLOSING'
+              : 'STOPPED';
+    });
+
+    if (actualPosition == requestedPosition) return;
+
+    movementTimer = Timer.periodic(const Duration(milliseconds: 50), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      setState(() {
+        if (actualPosition < requestedPosition) {
+          actualPosition++;
+        } else if (actualPosition > requestedPosition) {
+          actualPosition--;
         }
-
-        Future<void> stopValve() async {
-                movementTimer?.cancel();
-                movementTimer = null;
-
-                final command = ValveCommand(
-                        valveId: valveData.valveId,
-                        command: 'STOP',
-                        value: 0,
-                );
-
-                setState(() {
-                        status = 'STOPPED';
-                        lastCommandJson = const JsonEncoder.withIndent('  ').convert(command.toJson());
-                });
-
-                if (awsService.connected) {
-                        try {
-                                await awsService.sendCommand(command);
-                        } catch (error) {
-                                debugPrint('MQTT STOP failed: $error');
-                        }
-                }
+        if (actualPosition == requestedPosition) {
+          status = 'STOPPED';
+          timer.cancel();
         }
+      });
+    });
+  }
 
-	Widget positionButton(int value) {
-		final selected = selectedPosition == value;
-		return GestureDetector(
-			onTap: () => selectPosition(value),
-			child: Column(
-				children: [
-					Icon(selected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
-							size: 28, color: selected ? Colors.blue : Colors.grey),
-					const SizedBox(height: 5),
-					Text('$value%', style: TextStyle(fontWeight: selected ? FontWeight.bold : FontWeight.normal)),
-				],
-			),
-		);
-	}
+  Future<void> stopValve() async {
+    movementTimer?.cancel();
+    movementTimer = null;
+    await _sendCommand('STOP');
+    if (mounted) setState(() => status = 'STOPPED');
+  }
 
-	Color statusColor() {
-		switch (status) {
-			case 'OPENING': return Colors.blue;
-			case 'CLOSING': return Colors.orange;
-			default: return Colors.green;
-		}
-	}
+  Future<void> _numberCommand(String command, String title, int initial) async {
+    final controller = TextEditingController(text: '$initial');
+    final value = await showDialog<int>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: TextField(
+          controller: controller,
+          keyboardType: TextInputType.number,
+          decoration: const InputDecoration(border: OutlineInputBorder()),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('CANCEL')),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, int.tryParse(controller.text)),
+            child: const Text('SEND'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (value != null) await _sendCommand(command, value);
+  }
 
-	@override
-        void initState() {
-                super.initState();
+  Future<void> _scheduleDialog() async {
+    int slot = 1;
+    int hour = 8;
+    int minute = 0;
+    int action = 1;
 
-                awsService = AwsService(
-                        host: 'YOUR_AWS_IOT_ENDPOINT',
-                        clientId: 'ORBI-APP',
-                        valveId: valveData.valveId,
-                );
+    await showDialog<void>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('SET SCHEDULE'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              DropdownButtonFormField<int>(
+                value: slot,
+                decoration: const InputDecoration(labelText: 'Slot'),
+                items: List.generate(8, (i) => DropdownMenuItem(value: i + 1, child: Text('Slot ${i + 1}'))),
+                onChanged: (v) => setDialogState(() => slot = v ?? 1),
+              ),
+              TextField(
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(labelText: 'Hour (0-23)'),
+                onChanged: (v) => hour = int.tryParse(v) ?? hour,
+              ),
+              TextField(
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(labelText: 'Minute (0-59)'),
+                onChanged: (v) => minute = int.tryParse(v) ?? minute,
+              ),
+              DropdownButtonFormField<int>(
+                value: action,
+                decoration: const InputDecoration(labelText: 'Action'),
+                items: const [
+                  DropdownMenuItem(value: 1, child: Text('OPEN')),
+                  DropdownMenuItem(value: 2, child: Text('CLOSE')),
+                ],
+                onChanged: (v) => setDialogState(() => action = v ?? 1),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('CANCEL')),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+                final packed = ((slot & 0x0F) << 12) |
+                    ((action & 0x03) << 10) |
+                    ((hour & 0x1F) << 5) |
+                    (minute & 0x1F);
+                _sendCommand('SET_SCHEDULE', packed);
+              },
+              child: const Text('SAVE'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
-                statusSubscription = awsService.valveStatusStream.listen((data) {
-                        if (!mounted) return;
+  Widget _actionButton({
+    required String label,
+    required IconData icon,
+    required VoidCallback onPressed,
+    bool primary = false,
+  }) {
+    final child = Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [Icon(icon), const SizedBox(width: 8), Text(label)],
+    );
 
-                        setState(() {
-                                valveData = data;
-                                status = data.status;
-                                requestedPosition = data.requested;
-                                actualPosition = data.actual;
-                        });
-                });
-        }
+    return SizedBox(
+      height: 50,
+      child: primary
+          ? ElevatedButton(onPressed: onPressed, child: child)
+          : OutlinedButton(onPressed: onPressed, child: child),
+    );
+  }
 
-        @override
-        void dispose() {
-                movementTimer?.cancel();
-                statusSubscription?.cancel();
-                awsService.dispose();
-                super.dispose();
-        }
+  Widget _section(String title, List<Widget> buttons) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(title, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 12),
+            ...buttons.expand((button) => [button, const SizedBox(height: 8)]).toList()..removeLast(),
+          ],
+        ),
+      ),
+    );
+  }
 
-	@override
-	Widget build(BuildContext context) {
-		return Scaffold(
-			appBar: AppBar(title: const Text('ORBI Valve', style: TextStyle(fontWeight: FontWeight.bold)), centerTitle: true),
-			body: SingleChildScrollView(
-				padding: const EdgeInsets.all(20),
-				child: Column(children: [
-                                        ValveStatusCard(
-                                                status: status,
-                                                requestedPosition: requestedPosition,
-                                                actualPosition: actualPosition,
-                                                statusColor: statusColor(),
-                                        ),const SizedBox(height: 25),
-					ValvePositionControl(
-        selectedPosition: selectedPosition,
-        selectPosition: selectPosition,
-        setValve: setValve,
-        stopValve: stopValve,
-),const SizedBox(height: 20),
-                                        if (lastCommandJson.isNotEmpty)
-                                                CommandJsonCard(commandJson: lastCommandJson),                                        const SizedBox(height: 20),					const Row(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.circle, size: 10, color: Colors.grey), SizedBox(width: 8), Text('Controller not connected', style: TextStyle(color: Colors.grey))]),
-				]),
-			),
-		);
-	}
+  Color statusColor() {
+    switch (status) {
+      case 'OPENING':
+        return Colors.blue;
+      case 'CLOSING':
+        return Colors.orange;
+      case 'FAULT':
+        return Colors.red;
+      default:
+        return Colors.green;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('ORBI Valve', style: TextStyle(fontWeight: FontWeight.bold)),
+        centerTitle: true,
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            ValveStatusCard(
+              status: status,
+              requestedPosition: requestedPosition,
+              actualPosition: actualPosition,
+              statusColor: statusColor(),
+            ),
+            const SizedBox(height: 16),
+            ValvePositionControl(
+              selectedPosition: selectedPosition,
+              selectPosition: selectPosition,
+              setValve: setValve,
+              stopValve: stopValve,
+            ),
+            const SizedBox(height: 16),
+            _section('VALVE CONTROL', [
+              _actionButton(label: 'OPEN VALVE', icon: Icons.keyboard_arrow_up, onPressed: () => _sendCommand('OPEN', 0), primary: true),
+              _actionButton(label: 'CLOSE VALVE', icon: Icons.keyboard_arrow_down, onPressed: () => _sendCommand('CLOSE', 0)),
+              _actionButton(label: 'STOP VALVE', icon: Icons.stop_circle, onPressed: stopValve),
+              _actionButton(label: 'GET STATUS', icon: Icons.refresh, onPressed: () => _sendCommand('GET_STATUS')),
+              _actionButton(label: 'CLEAR FAULT', icon: Icons.restart_alt, onPressed: () => _sendCommand('CLEAR_FAULT')),
+            ]),
+            const SizedBox(height: 12),
+            _section('VALVE SETTINGS', [
+              _actionButton(label: 'SET TURNS', icon: Icons.rotate_right, onPressed: () => _numberCommand('SET_TURNS', 'SET TURNS', 0)),
+              _actionButton(label: 'SET CURRENT', icon: Icons.electric_bolt, onPressed: () => _numberCommand('SET_CURRENT', 'SET CURRENT', 0)),
+              _actionButton(label: 'SET DISENGAGE CURRENT', icon: Icons.power_settings_new, onPressed: () => _numberCommand('SET_DISENGAGE_CURRENT', 'SET DISENGAGE CURRENT', 0)),
+              _actionButton(label: 'SET CHANNEL', icon: Icons.settings_input_antenna, onPressed: () => _numberCommand('SET_CHANNEL', 'SET CHANNEL', 0)),
+            ]),
+            const SizedBox(height: 12),
+            _section('CALIBRATION', [
+              _actionButton(label: 'START CALIBRATION', icon: Icons.settings, onPressed: () => _sendCommand('CALIBRATE')),
+              _actionButton(label: 'CALIBRATION SET', icon: Icons.check_circle_outline, onPressed: () => _sendCommand('CAL_SET')),
+              _actionButton(label: 'CALIBRATION ABORT', icon: Icons.cancel_outlined, onPressed: () => _sendCommand('CAL_ABORT')),
+            ]),
+            const SizedBox(height: 12),
+            _section('SCHEDULE', [
+              _actionButton(label: 'SET SCHEDULE', icon: Icons.schedule, onPressed: _scheduleDialog),
+              _actionButton(label: 'CLEAR SCHEDULE', icon: Icons.event_busy, onPressed: () => _sendCommand('CLR_SCHEDULE')),
+              _actionButton(label: 'GET SCHEDULE', icon: Icons.event_note, onPressed: () => _sendCommand('GET_SCHEDULE')),
+            ]),
+            const SizedBox(height: 12),
+            _section('POWER / TIME', [
+              _actionButton(label: 'VOLTAGE BYPASS', icon: Icons.battery_alert, onPressed: () => _sendCommand('VOLTAGE_BYPASS')),
+              _actionButton(label: 'VOLTAGE CANCEL', icon: Icons.battery_full, onPressed: () => _sendCommand('VOLTAGE_CANCEL')),
+              _actionButton(label: 'SET TIME', icon: Icons.access_time, onPressed: () => _numberCommand('SET_TIME', 'SET TIME (UNIX)', DateTime.now().millisecondsSinceEpoch ~/ 1000)),
+            ]),
+            const SizedBox(height: 12),
+            _section('GATEWAY / OWNERSHIP', [
+              _actionButton(label: 'REBIND OWNER', icon: Icons.link, onPressed: () => _numberCommand('REBIND_OWNER', 'NEW GATEWAY ID', 0)),
+              _actionButton(label: 'ENTER EOL', icon: Icons.factory, onPressed: () => _sendCommand('ENTER_EOL')),
+            ]),
+            const SizedBox(height: 16),
+            if (lastCommandJson.isNotEmpty) CommandJsonCard(commandJson: lastCommandJson),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.circle, size: 10, color: valveData.connected ? Colors.green : Colors.grey),
+                const SizedBox(width: 8),
+                Text(
+                  valveData.connected ? 'Controller connected' : 'Controller not connected',
+                  style: TextStyle(color: valveData.connected ? Colors.green : Colors.grey),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
