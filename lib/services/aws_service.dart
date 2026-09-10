@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:convert';
 
 import 'package:mqtt_client/mqtt_client.dart';
@@ -29,6 +29,7 @@ class AwsService {
     _client = MqttServerClient(host, clientId);
     _client.port = port;
     _client.keepAlivePeriod = 30;
+    _client.secure = true;
     _client.logging(on: false);
     _client.autoReconnect = true;
     _client.resubscribeOnAutoReconnect = true;
@@ -128,3 +129,4 @@ class AwsService {
     _statusController.close();
   }
 }
+
