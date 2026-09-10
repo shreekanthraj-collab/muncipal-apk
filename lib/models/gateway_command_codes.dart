@@ -33,6 +33,7 @@ abstract final class GatewayCommandNames {
   static const String stop = 'STOP';
   static const String getStatus = 'GET_STATUS';
   static const String clearFault = 'CLEAR_FAULT';
+  static const String setPosition = 'SET_POSITION';
   static const String setTurns = 'SET_TURNS';
   static const String setSchedule = 'SET_SCHEDULE';
   static const String clearSchedule = 'CLR_SCHEDULE';
@@ -63,60 +64,21 @@ class GatewayCommandDefinition {
 
 /// Commands exposed to the normal valve-control UI.
 const List<GatewayCommandDefinition> valveControlCommands = [
-  GatewayCommandDefinition(
-    opcode: GatewayCommandCodes.open,
-    name: GatewayCommandNames.open,
-  ),
-  GatewayCommandDefinition(
-    opcode: GatewayCommandCodes.close,
-    name: GatewayCommandNames.close,
-  ),
-  GatewayCommandDefinition(
-    opcode: GatewayCommandCodes.stop,
-    name: GatewayCommandNames.stop,
-  ),
-  GatewayCommandDefinition(
-    opcode: GatewayCommandCodes.getStatus,
-    name: GatewayCommandNames.getStatus,
-  ),
-  GatewayCommandDefinition(
-    opcode: GatewayCommandCodes.clearFault,
-    name: GatewayCommandNames.clearFault,
-  ),
-  GatewayCommandDefinition(
-    opcode: GatewayCommandCodes.setTurns,
-    name: GatewayCommandNames.setTurns,
-  ),
-  GatewayCommandDefinition(
-    opcode: GatewayCommandCodes.setSchedule,
-    name: GatewayCommandNames.setSchedule,
-  ),
-  GatewayCommandDefinition(
-    opcode: GatewayCommandCodes.clearSchedule,
-    name: GatewayCommandNames.clearSchedule,
-  ),
-  GatewayCommandDefinition(
-    opcode: GatewayCommandCodes.setCurrent,
-    name: GatewayCommandNames.setCurrent,
-  ),
-  GatewayCommandDefinition(
-    opcode: GatewayCommandCodes.setDisengageCurrent,
-    name: GatewayCommandNames.setDisengageCurrent,
-  ),
+  GatewayCommandDefinition(opcode: GatewayCommandCodes.open, name: GatewayCommandNames.open),
+  GatewayCommandDefinition(opcode: GatewayCommandCodes.close, name: GatewayCommandNames.close),
+  GatewayCommandDefinition(opcode: GatewayCommandCodes.stop, name: GatewayCommandNames.stop),
+  GatewayCommandDefinition(opcode: GatewayCommandCodes.getStatus, name: GatewayCommandNames.getStatus),
+  GatewayCommandDefinition(opcode: GatewayCommandCodes.clearFault, name: GatewayCommandNames.clearFault),
+  GatewayCommandDefinition(opcode: GatewayCommandCodes.setTurns, name: GatewayCommandNames.setTurns),
+  GatewayCommandDefinition(opcode: GatewayCommandCodes.setSchedule, name: GatewayCommandNames.setSchedule),
+  GatewayCommandDefinition(opcode: GatewayCommandCodes.clearSchedule, name: GatewayCommandNames.clearSchedule),
+  GatewayCommandDefinition(opcode: GatewayCommandCodes.setCurrent, name: GatewayCommandNames.setCurrent),
+  GatewayCommandDefinition(opcode: GatewayCommandCodes.setDisengageCurrent, name: GatewayCommandNames.setDisengageCurrent),
 ];
 
 /// Calibration command set.
 const List<GatewayCommandDefinition> calibrationCommands = [
-  GatewayCommandDefinition(
-    opcode: GatewayCommandCodes.calibrate,
-    name: GatewayCommandNames.calibrate,
-  ),
-  GatewayCommandDefinition(
-    opcode: GatewayCommandCodes.calibrationSet,
-    name: GatewayCommandNames.calibrationSet,
-  ),
-  GatewayCommandDefinition(
-    opcode: GatewayCommandCodes.calibrationAbort,
-    name: GatewayCommandNames.calibrationAbort,
-  ),
+  GatewayCommandDefinition(opcode: GatewayCommandCodes.calibrate, name: GatewayCommandNames.calibrate),
+  GatewayCommandDefinition(opcode: GatewayCommandCodes.calibrationSet, name: GatewayCommandNames.calibrationSet),
+  GatewayCommandDefinition(opcode: GatewayCommandCodes.calibrationAbort, name: GatewayCommandNames.calibrationAbort),
 ];
