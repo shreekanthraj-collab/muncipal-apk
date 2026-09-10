@@ -323,7 +323,6 @@ class _ValveDetailScreenState extends State<ValveDetailScreen> {
             const SizedBox(height: 12),
             _section('GATEWAY / OWNERSHIP', [
               _actionButton(label: 'REBIND OWNER', icon: Icons.link, onPressed: () => _numberCommand('REBIND_OWNER', 'NEW GATEWAY ID', 0)),
-              _actionButton(label: 'ENTER EOL', icon: Icons.factory, onPressed: () => _sendCommand('ENTER_EOL')),
             ]),
             const SizedBox(height: 16),
             if (lastCommandJson.isNotEmpty) CommandJsonCard(commandJson: lastCommandJson),
