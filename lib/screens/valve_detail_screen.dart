@@ -221,11 +221,10 @@ class _ValveDetailScreenState extends State<ValveDetailScreen> {
       connected: false,
     );
 
-    awsService = AwsService(
-      host: 'YOUR_AWS_IOT_ENDPOINT',
-      clientId: 'ORBI-APP',
-      valveId: widget.valveId,
-    );
+   awsService = AwsService(
+  clientId: 'ORBI-APP',
+  valveId: widget.valveId,
+);
 
     statusSubscription = awsService.valveStatusStream.listen((data) {
       if (!mounted) return;

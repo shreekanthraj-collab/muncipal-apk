@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:mqtt_client/mqtt_client.dart';
 import 'package:mqtt_client/mqtt_server_client.dart';
 
+import '../config/app_config.dart';
 import '../models/valve_command.dart';
 import '../models/valve_data.dart';
 
@@ -21,10 +22,10 @@ class AwsService {
   bool _connected = false;
 
   AwsService({
-    required this.host,
+    this.host = AppConfig.awsIotEndpoint,
     required this.clientId,
     required this.valveId,
-    this.port = 8883,
+    this.port = AppConfig.awsIotPort,
   }) {
     _client = MqttServerClient(host, clientId);
     _client.port = port;
@@ -129,4 +130,3 @@ class AwsService {
     _statusController.close();
   }
 }
-
