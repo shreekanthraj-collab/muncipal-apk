@@ -1,4 +1,5 @@
 ﻿import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'valve_detail_screen.dart';
 
@@ -15,9 +16,39 @@ class ValveListScreen extends StatefulWidget {
 }
 
 class _ValveListScreenState extends State<ValveListScreen> {
-  final List<String> valves = [
-    'ORBI-001',
-  ];
+  List<String> valves = [];
+  bool loading = true;
+
+  String get storageKey {
+    return 'valves_${widget.transport.toLowerCase().replaceAll('/', '_')}';
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    loadValves();
+  }
+
+  Future<void> loadValves() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedValves = prefs.getStringList(storageKey);
+
+    if (!mounted) return;
+
+    setState(() {
+      valves = savedValves ?? ['ORBI-001'];
+      loading = false;
+    });
+
+    if (savedValves == null) {
+      await prefs.setStringList(storageKey, valves);
+    }
+  }
+
+  Future<void> saveValves() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(storageKey, valves);
+  }
 
   void addValve() {
     final controller = TextEditingController();
@@ -40,7 +71,7 @@ class _ValveListScreenState extends State<ValveListScreen> {
               child: const Text('CANCEL'),
             ),
             ElevatedButton(
-              onPressed: () {
+              onPressed: () async {
                 final valveId = controller.text.trim();
 
                 if (valveId.isEmpty || valves.contains(valveId)) {
@@ -51,7 +82,11 @@ class _ValveListScreenState extends State<ValveListScreen> {
                   valves.add(valveId);
                 });
 
-                Navigator.pop(context);
+                await saveValves();
+
+                if (context.mounted) {
+                  Navigator.pop(context);
+                }
               },
               child: const Text('ADD'),
             ),
@@ -61,10 +96,12 @@ class _ValveListScreenState extends State<ValveListScreen> {
     );
   }
 
-  void removeValve(String valveId) {
+  Future<void> removeValve(String valveId) async {
     setState(() {
       valves.remove(valveId);
     });
+
+    await saveValves();
   }
 
   void openValve(String valveId) {
@@ -81,6 +118,14 @@ class _ValveListScreenState extends State<ValveListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (loading) {
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: Text(
@@ -149,4 +194,3 @@ class _ValveListScreenState extends State<ValveListScreen> {
     );
   }
 }
-
