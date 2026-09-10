@@ -27,6 +27,7 @@ class _ValveDetailScreenState extends State<ValveDetailScreen> {
   String status = 'STOPPED';
   String lastCommandJson = '';
   Timer? movementTimer;
+  String otaStatus = 'Not checked';
 
   late final AwsService awsService;
   StreamSubscription<ValveData>? statusSubscription;
@@ -194,6 +195,29 @@ class _ValveDetailScreenState extends State<ValveDetailScreen> {
     );
   }
 
+  Future<void> _checkForOtaUpdate() async {
+    setState(() => otaStatus = 'Update check requested');
+    await _sendCommand('OTA_CHECK');
+  }
+
+  Future<void> _otaUpdate() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('OTA UPDATE'),
+        content: const Text('Start firmware update for this GSM/LTE valve?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('CANCEL')),
+          ElevatedButton(onPressed: () => Navigator.pop(context, true), child: const Text('UPDATE')),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      setState(() => otaStatus = 'OTA update requested');
+      await _sendCommand('OTA_UPDATE');
+    }
+  }
+
   Widget _actionButton({required String label, required IconData icon, required VoidCallback onPressed, bool primary = false}) {
     final child = Row(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(icon), const SizedBox(width: 8), Text(label)]);
     return SizedBox(height: 50, child: primary ? ElevatedButton(onPressed: onPressed, child: child) : OutlinedButton(onPressed: onPressed, child: child));
@@ -226,6 +250,8 @@ class _ValveDetailScreenState extends State<ValveDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isGsm = widget.transport == TransportType.gsmLte;
+
     return Scaffold(
       appBar: AppBar(title: Text(widget.transport == null ? 'ORBI Valve' : '${widget.transport!.label} Valve'), centerTitle: true),
       body: SingleChildScrollView(
@@ -279,6 +305,17 @@ class _ValveDetailScreenState extends State<ValveDetailScreen> {
             _section('GATEWAY / OWNERSHIP', [
               _actionButton(label: 'REBIND OWNER', icon: Icons.link, onPressed: () => _numberCommand('REBIND_OWNER', 'NEW GATEWAY ID', 0)),
             ]),
+            if (isGsm) ...[
+              const SizedBox(height: 12),
+              _section('FIRMWARE / OTA', [
+                _actionButton(label: 'CHECK FOR UPDATE', icon: Icons.system_update_alt, onPressed: _checkForOtaUpdate),
+                _actionButton(label: 'OTA UPDATE', icon: Icons.download, onPressed: _otaUpdate, primary: true),
+                Padding(
+                  padding: const EdgeInsets.only(top: 2),
+                  child: Text(otaStatus, textAlign: TextAlign.center, style: const TextStyle(fontSize: 13)),
+                ),
+              ]),
+            ],
             const SizedBox(height: 16),
             if (lastCommandJson.isNotEmpty) CommandJsonCard(commandJson: lastCommandJson),
             const SizedBox(height: 16),
