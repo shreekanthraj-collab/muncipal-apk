@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 
+import '../models/transport_type.dart';
 import '../models/valve_command.dart';
 import '../models/valve_data.dart';
 import '../services/aws_service.dart';
@@ -11,7 +12,9 @@ import '../widgets/valve_position_control.dart';
 import '../widgets/valve_status_card.dart';
 
 class ValveDetailScreen extends StatefulWidget {
-  const ValveDetailScreen({super.key});
+  final TransportType? transport;
+
+  const ValveDetailScreen({super.key, this.transport});
 
   @override
   State<ValveDetailScreen> createState() => _ValveDetailScreenState();
@@ -266,7 +269,7 @@ class _ValveDetailScreenState extends State<ValveDetailScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('ORBI Valve', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(widget.transport == null ? 'ORBI Valve' : '${widget.transport!.label} Valve'),
         centerTitle: true,
       ),
       body: SingleChildScrollView(
