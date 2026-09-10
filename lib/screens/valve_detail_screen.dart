@@ -42,13 +42,11 @@ class _ValveDetailScreenState extends State<ValveDetailScreen> {
   @override
   void initState() {
     super.initState();
-
     awsService = AwsService(
       host: 'YOUR_AWS_IOT_ENDPOINT',
       clientId: 'ORBI-APP',
       valveId: valveData.valveId,
     );
-
     statusSubscription = awsService.valveStatusStream.listen((data) {
       if (!mounted) return;
       setState(() {
@@ -68,23 +66,12 @@ class _ValveDetailScreenState extends State<ValveDetailScreen> {
     super.dispose();
   }
 
-  void selectPosition(int value) {
-    setState(() => selectedPosition = value);
-  }
+  void selectPosition(int value) => setState(() => selectedPosition = value);
 
   Future<void> _sendCommand(String command, [int value = 0]) async {
-    final request = ValveCommand(
-      valveId: valveData.valveId,
-      command: command,
-      value: value,
-    );
-
-    setState(() {
-      lastCommandJson = const JsonEncoder.withIndent('  ').convert(request.toJson());
-    });
-
+    final request = ValveCommand(valveId: valveData.valveId, command: command, value: value);
+    setState(() => lastCommandJson = const JsonEncoder.withIndent('  ').convert(request.toJson()));
     if (!awsService.connected) return;
-
     try {
       await awsService.sendCommand(request);
     } catch (error) {
@@ -94,19 +81,12 @@ class _ValveDetailScreenState extends State<ValveDetailScreen> {
 
   Future<void> setValve() async {
     await _sendCommand('SET_POSITION', selectedPosition);
-
     movementTimer?.cancel();
     setState(() {
       requestedPosition = selectedPosition;
-      status = actualPosition < requestedPosition
-          ? 'OPENING'
-          : actualPosition > requestedPosition
-              ? 'CLOSING'
-              : 'STOPPED';
+      status = actualPosition < requestedPosition ? 'OPENING' : actualPosition > requestedPosition ? 'CLOSING' : 'STOPPED';
     });
-
     if (actualPosition == requestedPosition) return;
-
     movementTimer = Timer.periodic(const Duration(milliseconds: 50), (timer) {
       if (!mounted) {
         timer.cancel();
@@ -146,10 +126,7 @@ class _ValveDetailScreenState extends State<ValveDetailScreen> {
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('CANCEL')),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, int.tryParse(controller.text)),
-            child: const Text('SEND'),
-          ),
+          ElevatedButton(onPressed: () => Navigator.pop(context, int.tryParse(controller.text)), child: const Text('SEND')),
         ],
       ),
     );
@@ -162,7 +139,6 @@ class _ValveDetailScreenState extends State<ValveDetailScreen> {
     int hour = 8;
     int minute = 0;
     int action = 1;
-
     await showDialog<void>(
       context: context,
       builder: (context) => StatefulBuilder(
@@ -172,7 +148,7 @@ class _ValveDetailScreenState extends State<ValveDetailScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               DropdownButtonFormField<int>(
-                value: slot,
+                initialValue: slot,
                 decoration: const InputDecoration(labelText: 'Slot'),
                 items: List.generate(8, (i) => DropdownMenuItem(value: i + 1, child: Text('Slot ${i + 1}'))),
                 onChanged: (v) => setDialogState(() => slot = v ?? 1),
@@ -188,7 +164,7 @@ class _ValveDetailScreenState extends State<ValveDetailScreen> {
                 onChanged: (v) => minute = int.tryParse(v) ?? minute,
               ),
               DropdownButtonFormField<int>(
-                value: action,
+                initialValue: action,
                 decoration: const InputDecoration(labelText: 'Action'),
                 items: const [
                   DropdownMenuItem(value: 1, child: Text('OPEN')),
@@ -203,10 +179,7 @@ class _ValveDetailScreenState extends State<ValveDetailScreen> {
             ElevatedButton(
               onPressed: () {
                 Navigator.pop(context);
-                final packed = ((slot & 0x0F) << 12) |
-                    ((action & 0x03) << 10) |
-                    ((hour & 0x1F) << 5) |
-                    (minute & 0x1F);
+                final packed = ((slot & 0x0F) << 12) | ((action & 0x03) << 10) | ((hour & 0x1F) << 5) | (minute & 0x1F);
                 _sendCommand('SET_SCHEDULE', packed);
               },
               child: const Text('SAVE'),
@@ -217,23 +190,9 @@ class _ValveDetailScreenState extends State<ValveDetailScreen> {
     );
   }
 
-  Widget _actionButton({
-    required String label,
-    required IconData icon,
-    required VoidCallback onPressed,
-    bool primary = false,
-  }) {
-    final child = Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [Icon(icon), const SizedBox(width: 8), Text(label)],
-    );
-
-    return SizedBox(
-      height: 50,
-      child: primary
-          ? ElevatedButton(onPressed: onPressed, child: child)
-          : OutlinedButton(onPressed: onPressed, child: child),
-    );
+  Widget _actionButton({required String label, required IconData icon, required VoidCallback onPressed, bool primary = false}) {
+    final child = Row(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(icon), const SizedBox(width: 8), Text(label)]);
+    return SizedBox(height: 50, child: primary ? ElevatedButton(onPressed: onPressed, child: child) : OutlinedButton(onPressed: onPressed, child: child));
   }
 
   Widget _section(String title, List<Widget> buttons) {
@@ -254,42 +213,25 @@ class _ValveDetailScreenState extends State<ValveDetailScreen> {
 
   Color statusColor() {
     switch (status) {
-      case 'OPENING':
-        return Colors.blue;
-      case 'CLOSING':
-        return Colors.orange;
-      case 'FAULT':
-        return Colors.red;
-      default:
-        return Colors.green;
+      case 'OPENING': return Colors.blue;
+      case 'CLOSING': return Colors.orange;
+      case 'FAULT': return Colors.red;
+      default: return Colors.green;
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.transport == null ? 'ORBI Valve' : '${widget.transport!.label} Valve'),
-        centerTitle: true,
-      ),
+      appBar: AppBar(title: Text(widget.transport == null ? 'ORBI Valve' : '${widget.transport!.label} Valve'), centerTitle: true),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            ValveStatusCard(
-              status: status,
-              requestedPosition: requestedPosition,
-              actualPosition: actualPosition,
-              statusColor: statusColor(),
-            ),
+            ValveStatusCard(status: status, requestedPosition: requestedPosition, actualPosition: actualPosition, statusColor: statusColor()),
             const SizedBox(height: 16),
-            ValvePositionControl(
-              selectedPosition: selectedPosition,
-              selectPosition: selectPosition,
-              setValve: setValve,
-              stopValve: stopValve,
-            ),
+            ValvePositionControl(selectedPosition: selectedPosition, selectPosition: selectPosition, setValve: setValve, stopValve: stopValve),
             const SizedBox(height: 16),
             _section('VALVE CONTROL', [
               _actionButton(label: 'OPEN VALVE', icon: Icons.keyboard_arrow_up, onPressed: () => _sendCommand('OPEN', 0), primary: true),
@@ -330,17 +272,11 @@ class _ValveDetailScreenState extends State<ValveDetailScreen> {
             const SizedBox(height: 16),
             if (lastCommandJson.isNotEmpty) CommandJsonCard(commandJson: lastCommandJson),
             const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.circle, size: 10, color: valveData.connected ? Colors.green : Colors.grey),
-                const SizedBox(width: 8),
-                Text(
-                  valveData.connected ? 'Controller connected' : 'Controller not connected',
-                  style: TextStyle(color: valveData.connected ? Colors.green : Colors.grey),
-                ),
-              ],
-            ),
+            Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+              Icon(Icons.circle, size: 10, color: valveData.connected ? Colors.green : Colors.grey),
+              const SizedBox(width: 8),
+              Text(valveData.connected ? 'Controller connected' : 'Controller not connected', style: TextStyle(color: valveData.connected ? Colors.green : Colors.grey)),
+            ]),
           ],
         ),
       ),
