@@ -61,23 +61,14 @@ class Rs485FlowScreen extends StatelessWidget {
         child: ListView.separated(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
           itemCount: _valves.length,
-          separatorBuilder: (_, __) => const SizedBox(height: 10),
+          separatorBuilder: (_, _) => const SizedBox(height: 10),
           itemBuilder: (context, index) {
             final valve = _valves[index];
             return Card(
               child: ListTile(
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 18,
-                  vertical: 8,
-                ),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
                 leading: const Icon(Icons.water_drop, size: 32),
-                title: Text(
-                  valve.name,
-                  style: const TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+                title: Text(valve.name, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
                 subtitle: Text('${valve.id} • ${valve.transport}'),
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -86,13 +77,7 @@ class Rs485FlowScreen extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.center,
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        Text(
-                          valve.flow.toStringAsFixed(1),
-                          style: const TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                        Text(valve.flow.toStringAsFixed(1), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                         const Text('FLOW'),
                       ],
                     ),
