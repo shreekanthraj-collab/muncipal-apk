@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 
 import 'valve_detail_screen.dart';
 
@@ -52,9 +54,14 @@ class MapViewScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    const mapCenter = LatLng(12.9716, 77.5946);
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('VALVE MAP', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text(
+          'VALVE MAP',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         centerTitle: true,
       ),
       body: Column(
@@ -62,23 +69,77 @@ class MapViewScreen extends StatelessWidget {
           Expanded(
             child: Container(
               margin: const EdgeInsets.all(12),
+              clipBehavior: Clip.antiAlias,
               decoration: BoxDecoration(
                 border: Border.all(color: Colors.grey.shade400),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Stack(
                 children: [
-                  const Center(
-                    child: Icon(Icons.map, size: 110, color: Colors.grey),
+                  FlutterMap(
+                    options: const MapOptions(
+                      initialCenter: mapCenter,
+                      initialZoom: 13,
+                      minZoom: 3,
+                      maxZoom: 19,
+                    ),
+                    children: [
+                      TileLayer(
+                        urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                        userAgentPackageName: 'com.orb.valve_app',
+                      ),
+                      MarkerLayer(
+                        markers: _valves.map((valve) {
+                          return Marker(
+                            point: LatLng(valve.latitude, valve.longitude),
+                            width: 52,
+                            height: 60,
+                            child: GestureDetector(
+                              onTap: () => _openValve(context, valve),
+                              child: Tooltip(
+                                message: '${valve.name} • ${valve.transport}',
+                                child: Icon(
+                                  Icons.location_on,
+                                  size: 42,
+                                  color: _statusColor(valve.status),
+                                ),
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ],
                   ),
-                  ..._valves.map((valve) => _marker(context, valve)),
                   Positioned(
                     left: 12,
                     top: 12,
                     child: Card(
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
                         child: Text('${_valves.length} valves'),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    right: 12,
+                    top: 12,
+                    child: Card(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 8,
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _legend('GSM/LTE', Icons.cell_tower),
+                            const SizedBox(height: 4),
+                            _legend('LoRa', Icons.settings_input_antenna),
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -91,9 +152,14 @@ class MapViewScreen extends StatelessWidget {
             child: Column(
               children: _valves.map((valve) {
                 return ListTile(
-                  leading: Icon(Icons.location_on, color: _statusColor(valve.status)),
+                  leading: Icon(
+                    Icons.location_on,
+                    color: _statusColor(valve.status),
+                  ),
                   title: Text(valve.name),
-                  subtitle: Text('${valve.id} • ${valve.transport} • ${valve.status}'),
+                  subtitle: Text(
+                    '${valve.id} • ${valve.transport} • ${valve.status}',
+                  ),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => _openValve(context, valve),
                 );
@@ -105,22 +171,14 @@ class MapViewScreen extends StatelessWidget {
     );
   }
 
-  Widget _marker(BuildContext context, _MapValve valve) {
-    final positions = <String, Offset>{
-      'ORBI-001': const Offset(0.22, 0.28),
-      'ORBI-002': const Offset(0.68, 0.22),
-      'ORBI-003': const Offset(0.46, 0.65),
-    };
-    final position = positions[valve.id] ?? const Offset(0.5, 0.5);
-
-    return Positioned(
-      left: MediaQuery.sizeOf(context).width * position.dx - 12,
-      top: 220 * position.dy,
-      child: IconButton(
-        tooltip: valve.name,
-        onPressed: () => _openValve(context, valve),
-        icon: Icon(Icons.location_on, size: 34, color: _statusColor(valve.status)),
-      ),
+  Widget _legend(String text, IconData icon) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 15),
+        const SizedBox(width: 5),
+        Text(text, style: const TextStyle(fontSize: 12)),
+      ],
     );
   }
 }
