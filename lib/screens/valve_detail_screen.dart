@@ -186,6 +186,7 @@ class _ValveDetailScreenState extends State<ValveDetailScreen> {
                   final picked = await showTimePicker(
                     context: context,
                     initialTime: selectedTime,
+                    initialEntryMode: TimePickerEntryMode.dial,
                     helpText: 'SELECT SCHEDULE TIME',
                   );
                   if (picked != null) {
