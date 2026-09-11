@@ -162,72 +162,230 @@ class _ValveDetailScreenState extends State<ValveDetailScreen> {
 
   Future<void> _scheduleDialog() async {
     int slot = 1;
-    int hour = 8;
-    int minute = 0;
+    TimeOfDay selectedTime = const TimeOfDay(hour: 8, minute: 0);
     int action = 1;
+
     await showDialog<void>(
       context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: const Text('SET SCHEDULE'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              DropdownButtonFormField<int>(
-                initialValue: slot,
-                decoration: const InputDecoration(labelText: 'Slot'),
-                items: List.generate(
-                  8,
-                  (i) => DropdownMenuItem(
-                    value: i + 1,
-                    child: Text('Slot ${i + 1}'),
-                  ),
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text(
+                'SET SCHEDULE',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
                 ),
-                onChanged: (v) => setDialogState(() => slot = v ?? 1),
               ),
-              TextField(
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(labelText: 'Hour (0-23)'),
-                onChanged: (v) => hour = int.tryParse(v) ?? hour,
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    DropdownButtonFormField<int>(
+                      initialValue: slot,
+                      decoration: const InputDecoration(
+                        labelText: 'Schedule Slot',
+                        border: OutlineInputBorder(),
+                      ),
+                      items: List.generate(
+                        8,
+                        (index) => DropdownMenuItem<int>(
+                          value: index + 1,
+                          child: Text('Slot ${index + 1}'),
+                        ),
+                      ),
+                      onChanged: (value) {
+                        if (value == null) {
+                          return;
+                        }
+
+                        setDialogState(() {
+                          slot = value;
+                        });
+                      },
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    const Text(
+                      'TIME',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+
+                    const SizedBox(height: 8),
+
+                    InkWell(
+                      borderRadius: BorderRadius.circular(16),
+                      onTap: () async {
+                        final pickedTime = await showTimePicker(
+                          context: dialogContext,
+                          initialTime: selectedTime,
+                          initialEntryMode: TimePickerEntryMode.dial,
+                          helpText: 'SELECT SCHEDULE TIME',
+                          cancelText: 'CANCEL',
+                          confirmText: 'SET',
+                        );
+
+                        if (pickedTime == null) {
+                          return;
+                        }
+
+                        setDialogState(() {
+                          selectedTime = pickedTime;
+                        });
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 18,
+                          horizontal: 12,
+                        ),
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .outline,
+                          ),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Column(
+                          children: [
+                            const Icon(
+                              Icons.access_time,
+                              size: 34,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              selectedTime.format(context),
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                fontSize: 30,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            const Text(
+                              'Tap the clock to change time',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    const Text(
+                      'ACTION',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+
+                    const SizedBox(height: 8),
+
+                    SegmentedButton<int>(
+                      segments: const [
+                        ButtonSegment<int>(
+                          value: 1,
+                          icon: Icon(Icons.lock_open),
+                          label: Text('OPEN'),
+                        ),
+                        ButtonSegment<int>(
+                          value: 2,
+                          icon: Icon(Icons.lock),
+                          label: Text('CLOSE'),
+                        ),
+                      ],
+                      selected: <int>{action},
+                      onSelectionChanged: (selection) {
+                        if (selection.isEmpty) {
+                          return;
+                        }
+
+                        setDialogState(() {
+                          action = selection.first;
+                        });
+                      },
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .surfaceContainerHighest,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.schedule),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              'Slot $slot  •  '
+                              '${selectedTime.format(context)}  •  '
+                              '${action == 1 ? 'OPEN' : 'CLOSE'}',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              TextField(
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(labelText: 'Minute (0-59)'),
-                onChanged: (v) => minute = int.tryParse(v) ?? minute,
-              ),
-              DropdownButtonFormField<int>(
-                initialValue: action,
-                decoration: const InputDecoration(labelText: 'Action'),
-                items: const [
-                  DropdownMenuItem(value: 1, child: Text('OPEN')),
-                  DropdownMenuItem(value: 2, child: Text('CLOSE')),
-                ],
-                onChanged: (v) => setDialogState(() => action = v ?? 1),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('CANCEL'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context);
-                final packed = ((slot & 0x0F) << 12) |
-                    ((action & 0x03) << 10) |
-                    ((hour & 0x1F) << 5) |
-                    (minute & 0x1F);
-                _sendCommand(GatewayCommandNames.setSchedule, packed);
-              },
-              child: const Text('SAVE'),
-            ),
-          ],
-        ),
-      ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(dialogContext);
+                  },
+                  child: const Text('CANCEL'),
+                ),
+                ElevatedButton.icon(
+                  onPressed: () async {
+                    final hour = selectedTime.hour;
+                    final minute = selectedTime.minute;
+
+                    final packed = ((slot & 0x0F) << 12) |
+                        ((action & 0x03) << 10) |
+                        ((hour & 0x1F) << 5) |
+                        (minute & 0x1F);
+
+                    debugPrint(
+                      'SCHEDULE SAVE: slot=$slot action=$action '
+                      'time=${selectedTime.hour}:${selectedTime.minute} '
+                      'packed=$packed',
+                    );
+
+                    await _sendCommand(
+                      GatewayCommandNames.setSchedule,
+                      packed,
+                    );
+
+                    if (dialogContext.mounted) {
+                      Navigator.pop(dialogContext);
+                    }
+                  },
+                  icon: const Icon(Icons.save),
+                  label: const Text('SAVE'),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
-
   Future<void> _checkForOtaUpdate() async {
     setState(() => otaStatus = 'Update check requested');
     await _sendCommand('OTA_CHECK');
@@ -546,3 +704,8 @@ class _ValveDetailScreenState extends State<ValveDetailScreen> {
     );
   }
 }
+
+
+
+
+
