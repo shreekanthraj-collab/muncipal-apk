@@ -33,19 +33,11 @@ class _MapViewScreenState extends State<MapViewScreen> {
   Future<void> _getMobileLocation() async {
     setState(() { _loadingLocation = true; _locationError = null; });
     try {
-      if (!await Geolocator.isLocationServiceEnabled()) {
-        throw Exception('GPS/location service is turned off');
-      }
+      if (!await Geolocator.isLocationServiceEnabled()) throw Exception('GPS/location service is turned off');
       var permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-      }
-      if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
-        throw Exception('Location permission denied');
-      }
-      final position = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
-      );
+      if (permission == LocationPermission.denied) permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) throw Exception('Location permission denied');
+      final position = await Geolocator.getCurrentPosition(locationSettings: const LocationSettings(accuracy: LocationAccuracy.high));
       if (!mounted) return;
       final location = LatLng(position.latitude, position.longitude);
       setState(() { _mobileLocation = location; _center = location; _loadingLocation = false; });
@@ -70,29 +62,29 @@ class _MapViewScreenState extends State<MapViewScreen> {
         centerTitle: true,
         actions: [IconButton(icon: const Icon(Icons.my_location), tooltip: 'Show my location', onPressed: _getMobileLocation)],
       ),
-      body: Stack(
-        children: [
-          FlutterMap(
-            mapController: _mapController,
-            options: MapOptions(initialCenter: _center, initialZoom: 16, minZoom: 3, maxZoom: 19),
-            children: [
-              TileLayer(urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', userAgentPackageName: 'com.orb.valve_app'),
-              MarkerLayer(markers: [
-                ..._valves.map((valve) => Marker(
-                  point: LatLng(valve.latitude, valve.longitude), width: 52, height: 60,
-                  child: GestureDetector(onTap: () => _openValve(context, valve), child: Icon(Icons.location_on, size: 42, color: _statusColor(valve.status))),
-                )),
-                if (_mobileLocation != null)
-                  Marker(point: _mobileLocation!, width: 54, height: 54, child: const _MobileLocationMarker()),
-              ]),
-            ],
-          ),
-          Positioned(left: 12, top: 12, child: Card(child: Padding(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8), child: Text('${_valves.length} valves')))),
-          if (_loadingLocation) const Positioned(top: 12, left: 0, right: 0, child: Center(child: Card(child: Padding(padding: EdgeInsets.all(8), child: Text('Getting mobile GPS...'))))),
-          if (_locationError != null && _mobileLocation == null)
-            Positioned(left: 12, right: 12, bottom: 12, child: Card(child: Padding(padding: const EdgeInsets.all(12), child: Row(children: [const Icon(Icons.location_off), const SizedBox(width: 8), Expanded(child: Text(_locationError!)), IconButton(icon: const Icon(Icons.refresh), onPressed: _getMobileLocation)])))),
-        ],
-      ),
+      body: Stack(children: [
+        FlutterMap(
+          mapController: _mapController,
+          options: MapOptions(initialCenter: _center, initialZoom: 16, minZoom: 3, maxZoom: 19),
+          children: [
+            TileLayer(
+              urlTemplate: 'https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png',
+              userAgentPackageName: 'com.example.orb_valve_app',
+              maxZoom: 19,
+            ),
+            MarkerLayer(markers: [
+              ..._valves.map((valve) => Marker(
+                point: LatLng(valve.latitude, valve.longitude), width: 52, height: 60,
+                child: GestureDetector(onTap: () => _openValve(context, valve), child: Icon(Icons.location_on, size: 42, color: _statusColor(valve.status))),
+              )),
+              if (_mobileLocation != null) Marker(point: _mobileLocation!, width: 54, height: 54, child: const _MobileLocationMarker()),
+            ]),
+          ],
+        ),
+        Positioned(left: 12, top: 12, child: Card(child: Padding(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8), child: Text('${_valves.length} valves')))),
+        if (_loadingLocation) const Positioned(top: 12, left: 0, right: 0, child: Center(child: Card(child: Padding(padding: EdgeInsets.all(8), child: Text('Getting mobile GPS...'))))),
+        if (_locationError != null && _mobileLocation == null) Positioned(left: 12, right: 12, bottom: 12, child: Card(child: Padding(padding: const EdgeInsets.all(12), child: Row(children: [const Icon(Icons.location_off), const SizedBox(width: 8), Expanded(child: Text(_locationError!)), IconButton(icon: const Icon(Icons.refresh), onPressed: _getMobileLocation)])))),
+      ]),
     );
   }
 }
