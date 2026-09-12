@@ -1,4 +1,4 @@
-import 'dart:async';
+ï»¿import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -12,16 +12,16 @@ import '../widgets/command_json_card.dart';
 import '../widgets/valve_position_control.dart';
 import '../widgets/valve_status_card.dart';
 
-class ValveDetailScreen extends StatefulWidget {
+class ValveControlScreen extends StatefulWidget {
   final TransportType? transport;
 
-  const ValveDetailScreen({super.key, this.transport});
+  const ValveControlScreen({super.key, this.transport});
 
   @override
-  State<ValveDetailScreen> createState() => _ValveDetailScreenState();
+  State<ValveControlScreen> createState() => _ValveControlScreenState();
 }
 
-class _ValveDetailScreenState extends State<ValveDetailScreen> {
+class _ValveControlScreenState extends State<ValveControlScreen> {
   int selectedPosition = 0;
   int requestedPosition = 0;
   int actualPosition = 0;
@@ -330,8 +330,8 @@ class _ValveDetailScreenState extends State<ValveDetailScreen> {
                           const SizedBox(width: 10),
                           Expanded(
                             child: Text(
-                              'Slot $slot  •  '
-                              '${selectedTime.format(context)}  •  '
+                              'Slot $slot  â€¢  '
+                              '${selectedTime.format(context)}  â€¢  '
                               '${action == 1 ? 'OPEN' : 'CLOSE'}',
                               style: const TextStyle(
                                 fontWeight: FontWeight.w600,
@@ -704,6 +704,8 @@ class _ValveDetailScreenState extends State<ValveDetailScreen> {
     );
   }
 }
+
+
 
 
 

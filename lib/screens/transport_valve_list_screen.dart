@@ -1,7 +1,7 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
 import '../models/transport_type.dart';
-import 'valve_detail_screen.dart';
+import 'valve_control_screen.dart';
 
 class TransportValveListScreen extends StatefulWidget {
   final TransportType transport;
@@ -72,7 +72,7 @@ class _TransportValveListScreenState extends State<TransportValveListScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => ValveDetailScreen(
+        builder: (_) => ValveControlScreen(
           transport: widget.transport,
         ),
       ),
@@ -112,7 +112,7 @@ class _TransportValveListScreenState extends State<TransportValveListScreen> {
                 style: const TextStyle(fontWeight: FontWeight.bold),
               ),
               subtitle: Text(
-                '${valve.id} • ${widget.transport.label} • ONLINE',
+                '${valve.id} â€¢ ${widget.transport.label} â€¢ ONLINE',
               ),
               trailing: const Icon(Icons.chevron_right),
               onTap: () => _openValve(valve),
@@ -130,3 +130,8 @@ class _TransportValve {
 
   const _TransportValve(this.id, this.name);
 }
+
+
+
+
+
