@@ -232,7 +232,7 @@ class _Rs485FlowScreenState extends State<Rs485FlowScreen> {
               crossAxisCount: 2,
               crossAxisSpacing: 10,
               mainAxisSpacing: 10,
-              childAspectRatio: 0.88,
+              childAspectRatio: 0.68,
             ),
             itemBuilder: (context, index) {
               final sensor = _sensorTypes[index];
@@ -344,13 +344,19 @@ class _Rs485FlowScreenState extends State<Rs485FlowScreen> {
               child: device == null
                   ? OutlinedButton.icon(
                       onPressed: () => _addDevice(sensor),
-                      icon: const Icon(Icons.add),
-                      label: const Text('ADD DEVICE'),
+                      icon: const Icon(Icons.add, size: 18),
+                      label: const FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text('ADD DEVICE'),
+                      ),
                     )
                   : OutlinedButton.icon(
                       onPressed: () => _removeDevice(sensor),
-                      icon: const Icon(Icons.delete_outline),
-                      label: const Text('REMOVE'),
+                      icon: const Icon(Icons.delete_outline, size: 18),
+                      label: const FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text('REMOVE'),
+                      ),
                     ),
             ),
           ],
