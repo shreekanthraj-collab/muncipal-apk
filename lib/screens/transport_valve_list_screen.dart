@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
 import '../models/transport_type.dart';
 import 'valve_control_screen.dart';
@@ -9,7 +9,8 @@ class TransportValveListScreen extends StatefulWidget {
   const TransportValveListScreen({super.key, required this.transport});
 
   @override
-  State<TransportValveListScreen> createState() => _TransportValveListScreenState();
+  State<TransportValveListScreen> createState() =>
+      _TransportValveListScreenState();
 }
 
 class _TransportValveListScreenState extends State<TransportValveListScreen> {
@@ -91,7 +92,7 @@ class _TransportValveListScreenState extends State<TransportValveListScreen> {
       body: ListView.separated(
         padding: const EdgeInsets.all(16),
         itemCount: valves.length + 1,
-        separatorBuilder: (_, __) => const SizedBox(height: 10),
+        separatorBuilder: (_, index) => const SizedBox(height: 10),
         itemBuilder: (context, index) {
           if (index == valves.length) {
             return OutlinedButton.icon(
@@ -112,7 +113,7 @@ class _TransportValveListScreenState extends State<TransportValveListScreen> {
                 style: const TextStyle(fontWeight: FontWeight.bold),
               ),
               subtitle: Text(
-                '${valve.id} â€¢ ${widget.transport.label} â€¢ ONLINE',
+                '${valve.id} • ${widget.transport.label} • ONLINE',
               ),
               trailing: const Icon(Icons.chevron_right),
               onTap: () => _openValve(valve),
@@ -130,8 +131,3 @@ class _TransportValve {
 
   const _TransportValve(this.id, this.name);
 }
-
-
-
-
-
