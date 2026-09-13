@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
 class ValveStatusCard extends StatelessWidget {
   final String status;
@@ -6,6 +6,7 @@ class ValveStatusCard extends StatelessWidget {
   final int actualPosition;
   final Color statusColor;
   final VoidCallback onRequestStatus;
+  final int? rssi;
 
   const ValveStatusCard({
     super.key,
@@ -14,7 +15,41 @@ class ValveStatusCard extends StatelessWidget {
     required this.actualPosition,
     required this.statusColor,
     required this.onRequestStatus,
+    this.rssi,
   });
+
+  int _rssiBars(int? value) {
+    if (value == null) return 0;
+    if (value >= -70) return 3;
+    if (value >= -90) return 2;
+    return 1;
+  }
+
+  Widget _rssiIndicator() {
+    final bars = _rssiBars(rssi);
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: List.generate(3, (index) {
+        final height = 8.0 + (index * 5.0);
+
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 2),
+          child: Container(
+            width: 7,
+            height: height,
+            decoration: BoxDecoration(
+              color: index < bars
+                  ? Colors.green
+                  : Colors.grey.shade300,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+        );
+      }),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -55,12 +90,23 @@ class ValveStatusCard extends StatelessWidget {
                   child: ElevatedButton(
                     onPressed: onRequestStatus,
                     child: const Text(
-                      'REQUEST\nSTATUS',
+                      'GET STATUS',
                       textAlign: TextAlign.center,
-                      style: TextStyle(fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ),
+              ],
+            ),
+            const SizedBox(height: 18),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Text('RSSI'),
+                const SizedBox(width: 10),
+                _rssiIndicator(),
               ],
             ),
             const SizedBox(height: 20),
@@ -83,7 +129,11 @@ class ValveStatusCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                Container(width: 1, height: 50, color: Colors.grey),
+                Container(
+                  width: 1,
+                  height: 50,
+                  color: Colors.grey,
+                ),
                 Expanded(
                   child: Column(
                     children: [
