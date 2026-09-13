@@ -246,6 +246,7 @@ class _ValveDetailScreenState extends State<ValveDetailScreen> {
                 requestedPosition: requestedPosition,
                 actualPosition: actualPosition,
                 statusColor: statusColor(),
+                onRequestStatus: getValveStatus,
                 rssi: valveData.rssi,
               ),
               const SizedBox(height: 25),
