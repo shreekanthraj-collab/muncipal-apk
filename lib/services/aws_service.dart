@@ -78,6 +78,28 @@ class AwsService {
     );
   }
 
+  Future<void> setSleepBypass({
+    required String valveId,
+    required bool enabled,
+  }) async {
+    if (!_connected) {
+      throw StateError('AWS/MQTT not connected');
+    }
+
+    final builder = MqttClientPayloadBuilder();
+    builder.addString(
+      jsonEncode(<String, dynamic>{
+        'sleep_bypass': enabled,
+      }),
+    );
+
+    _client.publishMessage(
+      'orb/node/$valveId/cmd',
+      MqttQos.atLeastOnce,
+      builder.payload!,
+    );
+  }
+
   void _onConnected() {
     _connected = true;
 
