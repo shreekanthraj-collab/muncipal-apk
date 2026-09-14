@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
 
 import '../models/valve_command.dart';
+import '../models/valve_data.dart';
 import '../services/aws_service.dart';
 
 class ValveViewScreen extends StatefulWidget {
@@ -16,12 +18,13 @@ class ValveViewScreen extends StatefulWidget {
 
 class _ValveViewScreenState extends State<ValveViewScreen> {
   static const valveIds = <String>['GSM-001', 'GSM-002', 'LORA-001', 'LORA-002'];
+  static const mqttHost = String.fromEnvironment('MQTT_HOST', defaultValue: '');
 
-  late AwsService mqtt;
+  late final AwsService mqtt;
+  StreamSubscription<ValveData>? statusSubscription;
   String selectedValveId = 'GSM-001';
   int selectedPosition = 0;
   String status = 'STOPPED';
-  String lastCommand = '';
   String calibration = 'IDLE';
   bool sleepBypass = false;
   double voltageThreshold = 11.50;
@@ -31,12 +34,32 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
   @override
   void initState() {
     super.initState();
-    mqtt = AwsService(host: 'YOUR_AWS_IOT_ENDPOINT', clientId: 'ORBI-APP', valveId: selectedValveId);
+    mqtt = AwsService(host: mqttHost, clientId: 'ORBI-APP', valveId: selectedValveId);
+    statusSubscription = mqtt.valveStatusStream.listen(_applyStatus);
+    if (mqttHost.isNotEmpty) {
+      unawaited(_connect());
+    }
+  }
+
+  Future<void> _connect() async {
+    try {
+      await mqtt.connect();
+    } catch (_) {
+      if (mounted) setState(() => status = 'MQTT OFFLINE');
+    }
+  }
+
+  void _applyStatus(ValveData data) {
+    if (!mounted) return;
+    setState(() {
+      status = data.status;
+      selectedPosition = data.actual.clamp(0, 100);
+    });
   }
 
   Future<void> send(String command, {int value = 0}) async {
     final packet = ValveCommand(valveId: selectedValveId, command: command, value: value);
-    setState(() => lastCommand = const JsonEncoder.withIndent('  ').convert(packet.toJson()));
+    debugPrint(const JsonEncoder.withIndent('  ').convert(packet.toJson()));
     if (!mqtt.connected) return;
     try {
       await mqtt.sendCommand(packet);
@@ -75,6 +98,7 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
 
   @override
   void dispose() {
+    statusSubscription?.cancel();
     mqtt.dispose();
     super.dispose();
   }
@@ -237,7 +261,7 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
   }
 
   Future<void> _setSchedule() async {
-    await showDialog<void>(context: context, builder: (context) => AlertDialog(title: const Text('Set Schedule'), content: const Text('Use the device schedule editor to select date, start time and stop time.'), actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('CANCEL')), FilledButton(onPressed: () { Navigator.pop(context); send('SET_SCHEDULE'); }, child: const Text('SAVE'))]));
+    await showDialog<void>(context: context, builder: (context) => AlertDialog(title: const Text('Set Schedule'), content: const Text('Select date, start time and stop time for the valve schedule.'), actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('CANCEL')), FilledButton(onPressed: () { Navigator.pop(context); send('SET_SCHEDULE'); }, child: const Text('SAVE'))]));
   }
 
   Widget _card(String title, Widget child) => Card(child: Padding(padding: const EdgeInsets.all(14), child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)), const SizedBox(height: 10), child])));
