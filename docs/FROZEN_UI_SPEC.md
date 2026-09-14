@@ -94,13 +94,76 @@ LoRa valves do not receive firmware updates through the LoRa gateway. The APK mu
 
 ## Page 4 — MAP
 
-- **Combined Valve ID selector containing both GSM/LTE and LoRa valves**
-- ADD VALVE
-- Phone GPS / map area
-- Valve markers
-- Valve information / list with Valve ID and latitude / longitude
-- REMOVE
-- REBIND
+Page 4 is frozen to the approved MAP reference image and must be implemented with the following structure and behavior:
+
+### Header
+
+- Back arrow
+- Center title: **MAP**
+- Overflow menu at top right
+
+### Map identity / add valve row
+
+- **Map Name** field
+- Example/reference value: `Farm A - North Field`
+- Edit icon on the Map Name field
+- **ADD VALVE** button on the right
+
+### Map area
+
+- Phone **My Location (GPS)** card/indicator
+- Display current latitude and longitude when GPS is available
+- Map surface showing the user's location
+- Valve markers on the map
+- Each valve marker displays the corresponding Valve ID
+- Map controls include current-location/recenter and zoom + / zoom − controls
+- Actual map provider/SDK and live GPS wiring are implementation details; the frozen UI structure must remain as shown
+
+### Valve list
+
+- Section title: **Valve List (N)**
+- List contains both GSM/LTE and LoRa valves
+- Each valve entry shows:
+  - Valve ID
+  - Latitude
+  - Longitude
+  - REMOVE button
+  - REBIND button
+- Valve selection must work from the combined GSM + LoRa list
+
+### Add-valve confirmation
+
+After a valve is successfully added, show a modal confirmation matching the approved flow:
+
+- Green success icon
+- **Valve Added Successfully**
+- Valve ID
+- Latitude
+- Longitude
+- **OK** button
+
+### Remove-valve confirmation
+
+After a valve is successfully removed, show a modal confirmation matching the approved flow:
+
+- Red delete icon
+- **Valve Removed**
+- Valve ID
+- Latitude
+- Longitude
+- **OK** button
+
+### Page 4 bottom navigation
+
+The approved reference shows the common bottom navigation with:
+
+- Home — Page 1
+- GSM — Page 2
+- LoRa — Page 3
+- MAP — Page 4, selected/highlighted
+- RS485 — Page 5
+
+Page 4 must not remove or replace the common navigation structure.
 
 ## Page 5 — RS485 / MODBUS
 
@@ -127,6 +190,7 @@ The APK does **not** contain a device/sensor driver list. The driver-search acti
 - Page 2 and Page 3 use their respective technology-specific Valve ID selections.
 - OWNER REBIND remains the final button on Pages 2 and 3.
 - WEEK remains the final scheduling item on Pages 2 and 3.
+- Page 4 uses the approved MAP image as the visual reference for implementation.
 
 ## Wiring / transport rule
 
