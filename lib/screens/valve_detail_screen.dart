@@ -6,228 +6,493 @@ import 'package:flutter/material.dart';
 import '../models/valve_data.dart';
 import '../models/valve_command.dart';
 import '../services/aws_service.dart';
-class ValveDetailScreen extends StatefulWidget {
-	const ValveDetailScreen({super.key});
 
-	@override
-	State<ValveDetailScreen> createState() => _ValveDetailScreenState();
+class ValveDetailScreen extends StatefulWidget {
+  const ValveDetailScreen({super.key});
+
+  @override
+  State<ValveDetailScreen> createState() => _ValveDetailScreenState();
 }
 
 class _ValveDetailScreenState extends State<ValveDetailScreen> {
-        int selectedPosition = 0;
+  final List<String> valveIds = const ['ORBI-001'];
+  String selectedValveId = 'ORBI-001';
 
-        ValveData valveData = const ValveData(
-                valveId: 'ORBI-001',
-                status: 'STOPPED',
-                requested: 0,
-                actual: 0,
-                connected: false,
-        );
+  int selectedPosition = 0;
+  int requestedPosition = 0;
+  int actualPosition = 0;
+  String status = 'STOPPED';
+  String lastCommandJson = '';
+  String calibrationState = 'IDLE';
 
-	int requestedPosition = 0;
-	int actualPosition = 0;
-	String status = 'STOPPED';
-	Timer? movementTimer;
-        String lastCommandJson = '';
+  double voltageThreshold = 11.50;
+  double ocTrip = 5.0;
+  double ocReset = 6.0;
+  bool voltageBypass = false;
 
-        late final AwsService awsService;
-        StreamSubscription<ValveData>? statusSubscription;
+  Timer? movementTimer;
+  late final AwsService awsService;
+  StreamSubscription<ValveData>? statusSubscription;
 
-	void selectPosition(int value) {
-		setState(() => selectedPosition = value);
-	}
+  ValveData valveData = const ValveData(
+    valveId: 'ORBI-001',
+    status: 'STOPPED',
+    requested: 0,
+    actual: 0,
+    connected: false,
+  );
 
-        Future<void> setValve() async {
-                final command = ValveCommand(
-                        valveId: valveData.valveId,
-                        command: 'SET_POSITION',
-                        value: selectedPosition,
-                );
+  void selectPosition(int value) {
+    setState(() => selectedPosition = value);
+  }
 
-                setState(() {
-                        lastCommandJson = const JsonEncoder.withIndent('  ').convert(command.toJson());
-                });
+  Future<void> _sendCommand(String command, {int value = 0}) async {
+    final packet = ValveCommand(
+      valveId: selectedValveId,
+      command: command,
+      value: value,
+    );
 
-                if (awsService.connected) {
-                        try {
-                                await awsService.sendCommand(command);
-                        } catch (error) {
-                                debugPrint('MQTT SET_POSITION failed: $error');
-                        }
-                }
+    setState(() {
+      lastCommandJson = const JsonEncoder.withIndent('  ').convert(packet.toJson());
+    });
 
-                movementTimer?.cancel();
-                setState(() {
-                        requestedPosition = selectedPosition;
-                        if (actualPosition < requestedPosition) {
-                                status = 'OPENING';
-                        } else if (actualPosition > requestedPosition) {
-                                status = 'CLOSING';
-                        } else {
-                                status = 'STOPPED';
-                        }
-                });
+    if (!awsService.connected) return;
 
-                if (actualPosition == requestedPosition) return;
+    try {
+      await awsService.sendCommand(packet);
+    } catch (error) {
+      debugPrint('$command failed: $error');
+    }
+  }
 
-                movementTimer = Timer.periodic(const Duration(milliseconds: 50), (timer) {
-                        if (!mounted) {
-                                timer.cancel();
-                                return;
-                        }
-                        setState(() {
-                                if (actualPosition < requestedPosition) {
-                                        actualPosition++;
-                                } else if (actualPosition > requestedPosition) {
-                                        actualPosition--;
-                                }
-                                if (actualPosition == requestedPosition) {
-                                        status = 'STOPPED';
-                                        timer.cancel();
-                                }
-                        });
-                });
+  Future<void> setValve() async {
+    await _sendCommand('SET_POSITION', value: selectedPosition);
+
+    movementTimer?.cancel();
+    setState(() {
+      requestedPosition = selectedPosition;
+      if (actualPosition < requestedPosition) {
+        status = 'OPENING';
+      } else if (actualPosition > requestedPosition) {
+        status = 'CLOSING';
+      } else {
+        status = 'STOPPED';
+      }
+    });
+
+    if (actualPosition == requestedPosition) return;
+
+    movementTimer = Timer.periodic(const Duration(milliseconds: 50), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      setState(() {
+        if (actualPosition < requestedPosition) {
+          actualPosition++;
+        } else if (actualPosition > requestedPosition) {
+          actualPosition--;
         }
-
-        Future<void> stopValve() async {
-                movementTimer?.cancel();
-                movementTimer = null;
-
-                final command = ValveCommand(
-                        valveId: valveData.valveId,
-                        command: 'STOP',
-                        value: 0,
-                );
-
-                setState(() {
-                        status = 'STOPPED';
-                        lastCommandJson = const JsonEncoder.withIndent('  ').convert(command.toJson());
-                });
-
-                if (awsService.connected) {
-                        try {
-                                await awsService.sendCommand(command);
-                        } catch (error) {
-                                debugPrint('MQTT STOP failed: $error');
-                        }
-                }
+        if (actualPosition == requestedPosition) {
+          status = 'STOPPED';
+          timer.cancel();
         }
+      });
+    });
+  }
 
-	Widget positionButton(int value) {
-		final selected = selectedPosition == value;
-		return GestureDetector(
-			onTap: () => selectPosition(value),
-			child: Column(
-				children: [
-					Icon(selected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
-						size: 28, color: selected ? Colors.blue : Colors.grey),
-					const SizedBox(height: 5),
-					Text('$value%', style: TextStyle(fontWeight: selected ? FontWeight.bold : FontWeight.normal)),
-				],
-			),
-		);
-	}
+  Future<void> openValve() async {
+    movementTimer?.cancel();
+    await _sendCommand('OPEN');
+    setState(() => status = 'OPENING');
+  }
 
-	Color statusColor() {
-		switch (status) {
-			case 'OPENING': return Colors.blue;
-			case 'CLOSING': return Colors.orange;
-			default: return Colors.green;
-		}
-	}
+  Future<void> closeValve() async {
+    movementTimer?.cancel();
+    await _sendCommand('CLOSE');
+    setState(() => status = 'CLOSING');
+  }
 
-	@override
-        void initState() {
-                super.initState();
+  Future<void> stopValve() async {
+    movementTimer?.cancel();
+    movementTimer = null;
+    await _sendCommand('STOP');
+    if (mounted) setState(() => status = 'STOPPED');
+  }
 
-                awsService = AwsService(
-                        host: 'YOUR_AWS_IOT_ENDPOINT',
-                        clientId: 'ORBI-APP',
-                        valveId: valveData.valveId,
-                );
+  Future<void> emergencyStop() async {
+    movementTimer?.cancel();
+    movementTimer = null;
+    await _sendCommand('ESTOP');
+    if (mounted) setState(() => status = 'E-STOP');
+  }
 
-                statusSubscription = awsService.valveStatusStream.listen((data) {
-                        if (!mounted) return;
+  Future<void> calibrationStart() async {
+    await _sendCommand('CALIBRATE_START');
+    setState(() => calibrationState = 'STARTED');
+  }
 
-                        setState(() {
-                                valveData = data;
-                                status = data.status;
-                                requestedPosition = data.requested;
-                                actualPosition = data.actual;
-                        });
-                });
-        }
+  Future<void> calibrationOpen() async {
+    await _sendCommand('CALIBRATE_OPEN');
+    setState(() => calibrationState = 'OPEN');
+  }
 
-        @override
-        void dispose() {
-                movementTimer?.cancel();
-                statusSubscription?.cancel();
-                awsService.dispose();
-                super.dispose();
-        }
+  Future<void> calibrationClose() async {
+    await _sendCommand('CALIBRATE_CLOSE');
+    setState(() => calibrationState = 'CLOSE');
+  }
 
-	@override
-	Widget build(BuildContext context) {
-		return Scaffold(
-			appBar: AppBar(title: const Text('ORBI Valve', style: TextStyle(fontWeight: FontWeight.bold)), centerTitle: true),
-			body: SingleChildScrollView(
-				padding: const EdgeInsets.all(20),
-				child: Column(children: [
-					Card(child: Padding(padding: const EdgeInsets.all(24), child: Column(children: [
-						const Text('VALVE STATUS', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-						const SizedBox(height: 10),
-						Text(status, style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: statusColor())),
-						const SizedBox(height: 25),
-						Row(children: [
-							Expanded(child: Column(children: [const Text('REQUESTED'), const SizedBox(height: 6), Text('$requestedPosition%', style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold))])),
-							Container(width: 1, height: 50, color: Colors.grey),
-							Expanded(child: Column(children: [const Text('ACTUAL'), const SizedBox(height: 6), Text('$actualPosition%', style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold))])),
-						]),
-					]))),
-					const SizedBox(height: 25),
-					Card(child: Padding(padding: const EdgeInsets.all(20), child: Column(children: [
-						const Text('VALVE OPENING', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-						const SizedBox(height: 15),
-						Text('$selectedPosition%', style: const TextStyle(fontSize: 46, fontWeight: FontWeight.bold)),
-						const SizedBox(height: 15),
-						Slider(value: selectedPosition.toDouble(), min: 0, max: 100, divisions: 4, label: '$selectedPosition%', onChanged: (value) => selectPosition(value.round())),
-						const SizedBox(height: 5),
-						Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [positionButton(0), positionButton(25), positionButton(50), positionButton(75), positionButton(100)]),
-						const SizedBox(height: 25),
-						SizedBox(width: double.infinity, height: 52, child: ElevatedButton(onPressed: setValve, child: Text('SET VALVE TO $selectedPosition%', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)))),
-                                                const SizedBox(height: 10),
-                                                SizedBox(width: double.infinity, height: 52, child: OutlinedButton(onPressed: stopValve, child: const Text('STOP VALVE', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)))),
-					]))),
-					const SizedBox(height: 20),
-                                        if (lastCommandJson.isNotEmpty)
-                                                Card(
-                                                        child: Padding(
-                                                                padding: const EdgeInsets.all(16),
-                                                                child: Column(
-                                                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                                                        children: [
-                                                                                const Text(
-                                                                                        'COMMAND JSON',
-                                                                                        style: TextStyle(
-                                                                                                fontSize: 16,
-                                                                                                fontWeight: FontWeight.bold,
-                                                                                        ),
-                                                                                ),
-                                                                                const SizedBox(height: 10),
-                                                                                SelectableText(
-                                                                                        lastCommandJson,
-                                                                                        style: const TextStyle(
-                                                                                                fontFamily: 'monospace',
-                                                                                                fontSize: 13,
-                                                                                        ),
-                                                                                ),
-                                                                        ],
-                                                                ),
-                                                        ),
-                                                ),
-                                        const SizedBox(height: 20),					const Row(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.circle, size: 10, color: Colors.grey), SizedBox(width: 8), Text('Controller not connected', style: TextStyle(color: Colors.grey))]),
-				]),
-			),
-		);
-	}
+  Future<void> calibrationComplete() async {
+    await _sendCommand('CALIBRATE_COMPLETE');
+    setState(() => calibrationState = 'SAVED TO NVS');
+  }
+
+  Future<void> setVoltageThreshold() async {
+    await _sendCommand('SET_VOLTAGE_THRESHOLD', value: (voltageThreshold * 100).round());
+  }
+
+  Future<void> setOcTrip() async {
+    await _sendCommand('SET_OC_TRIP', value: (ocTrip * 100).round());
+  }
+
+  Future<void> setOcReset() async {
+    await _sendCommand('SET_OC_RESET', value: (ocReset * 100).round());
+  }
+
+  Future<void> toggleVoltageBypass(bool value) async {
+    setState(() => voltageBypass = value);
+    await _sendCommand(value ? 'VOLTAGE_BYPASS' : 'VOLTAGE_BYPASS_CANCEL');
+  }
+
+  Future<void> showScheduleDialog() async {
+    final start = TextEditingController(text: '06:00');
+    final stop = TextEditingController(text: '18:00');
+    final date = TextEditingController(text: 'YYYY-MM-DD');
+
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Set Schedule'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(controller: date, decoration: const InputDecoration(labelText: 'Date')),
+            TextField(controller: start, decoration: const InputDecoration(labelText: 'Start time')),
+            TextField(controller: stop, decoration: const InputDecoration(labelText: 'Stop time')),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('CANCEL')),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _sendCommand('SCHEDULE_SET');
+            },
+            child: const Text('SAVE'),
+          ),
+        ],
+      ),
+    );
+
+    start.dispose();
+    stop.dispose();
+    date.dispose();
+  }
+
+  Color statusColor() {
+    switch (status) {
+      case 'OPENING':
+        return Colors.blue;
+      case 'CLOSING':
+        return Colors.orange;
+      case 'E-STOP':
+        return Colors.red;
+      default:
+        return Colors.green;
+    }
+  }
+
+  Widget actionButton(String text, VoidCallback onPressed, {bool danger = false}) {
+    return Expanded(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        child: SizedBox(
+          height: 48,
+          child: danger
+              ? FilledButton.tonal(
+                  style: FilledButton.styleFrom(foregroundColor: Colors.red),
+                  onPressed: onPressed,
+                  child: Text(text),
+                )
+              : FilledButton(onPressed: onPressed, child: Text(text)),
+        ),
+      ),
+    );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    awsService = AwsService(
+      host: 'YOUR_AWS_IOT_ENDPOINT',
+      clientId: 'ORBI-APP',
+      valveId: valveData.valveId,
+    );
+
+    statusSubscription = awsService.valveStatusStream.listen((data) {
+      if (!mounted) return;
+      setState(() {
+        valveData = data;
+        selectedValveId = data.valveId;
+        status = data.status;
+        requestedPosition = data.requested;
+        actualPosition = data.actual;
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    movementTimer?.cancel();
+    statusSubscription?.cancel();
+    awsService.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Add New Valve'),
+        centerTitle: true,
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('VALVE ID', style: TextStyle(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 8),
+                    DropdownButtonFormField<String>(
+                      value: selectedValveId,
+                      items: valveIds
+                          .map((id) => DropdownMenuItem(value: id, child: Text(id)))
+                          .toList(),
+                      onChanged: (value) {
+                        if (value != null) setState(() => selectedValveId = value);
+                      },
+                      decoration: const InputDecoration(border: OutlineInputBorder()),
+                    ),
+                    const SizedBox(height: 14),
+                    Row(
+                      children: [
+                        const Expanded(child: Text('FW VERSION', style: TextStyle(fontWeight: FontWeight.bold))),
+                        const Text('1.0.0'),
+                        const SizedBox(width: 12),
+                        OutlinedButton(onPressed: () => _sendCommand('OTA_UPDATE'), child: const Text('OTA')),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const Text('VALVE', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 12),
+                    Text('SET POINT: $selectedPosition%', textAlign: TextAlign.center, style: const TextStyle(fontSize: 30, fontWeight: FontWeight.bold)),
+                    Slider(
+                      value: selectedPosition.toDouble(),
+                      min: 0,
+                      max: 100,
+                      divisions: 100,
+                      label: '$selectedPosition%',
+                      onChanged: (v) => selectPosition(v.round()),
+                    ),
+                    Wrap(
+                      alignment: WrapAlignment.spaceEvenly,
+                      spacing: 8,
+                      children: [0, 25, 50, 75, 100]
+                          .map((v) => ChoiceChip(label: Text('$v%'), selected: selectedPosition == v, onSelected: (_) => selectPosition(v)))
+                          .toList(),
+                    ),
+                    const SizedBox(height: 14),
+                    SizedBox(height: 48, child: ElevatedButton(onPressed: setValve, child: Text('SET % OPEN  —  $selectedPosition%'))),
+                    const SizedBox(height: 10),
+                    Row(children: [
+                      actionButton('OPEN', openValve),
+                      actionButton('CLOSE', closeValve),
+                    ]),
+                    const SizedBox(height: 8),
+                    Row(children: [
+                      actionButton('STOP', stopValve),
+                      actionButton('E-STOP', emergencyStop, danger: true),
+                    ]),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const Text('VALVE CALIBRATION', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 8),
+                    Text('State: $calibrationState'),
+                    const SizedBox(height: 10),
+                    Row(children: [
+                      actionButton('START', calibrationStart),
+                      actionButton('OPEN', calibrationOpen),
+                    ]),
+                    const SizedBox(height: 8),
+                    Row(children: [
+                      actionButton('CLOSE', calibrationClose),
+                      actionButton('COMPLETE / SAVE', calibrationComplete),
+                    ]),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const Text('VOLTAGE', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Bypass'),
+                      subtitle: Text(voltageBypass ? 'BYPASS ACTIVE' : 'BYPASS OFF'),
+                      value: voltageBypass,
+                      onChanged: toggleVoltageBypass,
+                    ),
+                    Row(
+                      children: [
+                        Expanded(child: Text('Threshold: ${voltageThreshold.toStringAsFixed(2)} V')),
+                        OutlinedButton(onPressed: setVoltageThreshold, child: const Text('SET')),
+                      ],
+                    ),
+                    Slider(
+                      value: voltageThreshold,
+                      min: 10.0,
+                      max: 14.0,
+                      divisions: 80,
+                      label: '${voltageThreshold.toStringAsFixed(2)} V',
+                      onChanged: (v) => setState(() => voltageThreshold = v),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const Text('CURRENT / OVER CURRENT', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    Row(children: [
+                      Expanded(child: Text('OC trip: ${ocTrip.toStringAsFixed(1)} A')),
+                      OutlinedButton(onPressed: setOcTrip, child: const Text('SET')),
+                    ]),
+                    Slider(value: ocTrip, min: 0.5, max: 20, divisions: 39, onChanged: (v) => setState(() => ocTrip = v)),
+                    Row(children: [
+                      Expanded(child: Text('Reset: ${ocReset.toStringAsFixed(1)} A')),
+                      OutlinedButton(onPressed: setOcReset, child: const Text('SET')),
+                    ]),
+                    Slider(value: ocReset, min: 0.5, max: 20, divisions: 39, onChanged: (v) => setState(() => ocReset = v)),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const Text('SCHEDULING / CLOCK', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 10),
+                    Row(children: [
+                      actionButton('VIEW SCHEDULE', () => _sendCommand('SCHEDULE_VIEW')),
+                      actionButton('START', () => _sendCommand('SCHEDULE_START')),
+                    ]),
+                    const SizedBox(height: 8),
+                    Row(children: [
+                      actionButton('SET SCHEDULE', showScheduleDialog),
+                      actionButton('CANCEL ALL', () => _sendCommand('SCHEDULE_CANCEL_ALL'), danger: true),
+                    ]),
+                    const Divider(height: 24),
+                    Row(children: [
+                      actionButton('CLOCK VIEW', () => _sendCommand('CLOCK_VIEW')),
+                      actionButton('START TIME', () => _sendCommand('CLOCK_START_TIME')),
+                    ]),
+                    const SizedBox(height: 8),
+                    Row(children: [
+                      actionButton('STOP TIME', () => _sendCommand('CLOCK_STOP_TIME')),
+                      actionButton('DATE SET', () => _sendCommand('CLOCK_DATE')),
+                    ]),
+                    const SizedBox(height: 8),
+                    SizedBox(height: 48, child: OutlinedButton(onPressed: () => _sendCommand('CLOCK_WORK_SET'), child: const Text('WORK SET'))),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('STATUS', style: TextStyle(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 6),
+                    Text(status, style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: statusColor())),
+                    Text('Requested: $requestedPosition%   Actual: $actualPosition%'),
+                    const SizedBox(height: 8),
+                    const Text('Controller not connected', style: TextStyle(color: Colors.grey)),
+                  ],
+                ),
+              ),
+            ),
+            if (lastCommandJson.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('LAST COMMAND JSON', style: TextStyle(fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 8),
+                      SelectableText(lastCommandJson, style: const TextStyle(fontFamily: 'monospace', fontSize: 12)),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
 }
