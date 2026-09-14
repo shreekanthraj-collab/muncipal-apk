@@ -6,9 +6,6 @@ import 'package:flutter/material.dart';
 import '../models/valve_data.dart';
 import '../models/valve_command.dart';
 import '../services/aws_service.dart';
-import '../widgets/valve_position_control.dart';
-import '../widgets/command_json_card.dart';
-import '../widgets/valve_status_card.dart';
 class ValveDetailScreen extends StatefulWidget {
 	const ValveDetailScreen({super.key});
 
@@ -123,7 +120,7 @@ class _ValveDetailScreenState extends State<ValveDetailScreen> {
 			child: Column(
 				children: [
 					Icon(selected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
-							size: 28, color: selected ? Colors.blue : Colors.grey),
+						size: 28, color: selected ? Colors.blue : Colors.grey),
 					const SizedBox(height: 5),
 					Text('$value%', style: TextStyle(fontWeight: selected ? FontWeight.bold : FontWeight.normal)),
 				],
@@ -176,20 +173,59 @@ class _ValveDetailScreenState extends State<ValveDetailScreen> {
 			body: SingleChildScrollView(
 				padding: const EdgeInsets.all(20),
 				child: Column(children: [
-                                        ValveStatusCard(
-                                                status: status,
-                                                requestedPosition: requestedPosition,
-                                                actualPosition: actualPosition,
-                                                statusColor: statusColor(),
-                                        ),const SizedBox(height: 25),
-					ValvePositionControl(
-        selectedPosition: selectedPosition,
-        selectPosition: selectPosition,
-        setValve: setValve,
-        stopValve: stopValve,
-),const SizedBox(height: 20),
+					Card(child: Padding(padding: const EdgeInsets.all(24), child: Column(children: [
+						const Text('VALVE STATUS', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+						const SizedBox(height: 10),
+						Text(status, style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: statusColor())),
+						const SizedBox(height: 25),
+						Row(children: [
+							Expanded(child: Column(children: [const Text('REQUESTED'), const SizedBox(height: 6), Text('$requestedPosition%', style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold))])),
+							Container(width: 1, height: 50, color: Colors.grey),
+							Expanded(child: Column(children: [const Text('ACTUAL'), const SizedBox(height: 6), Text('$actualPosition%', style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold))])),
+						]),
+					]))),
+					const SizedBox(height: 25),
+					Card(child: Padding(padding: const EdgeInsets.all(20), child: Column(children: [
+						const Text('VALVE OPENING', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+						const SizedBox(height: 15),
+						Text('$selectedPosition%', style: const TextStyle(fontSize: 46, fontWeight: FontWeight.bold)),
+						const SizedBox(height: 15),
+						Slider(value: selectedPosition.toDouble(), min: 0, max: 100, divisions: 4, label: '$selectedPosition%', onChanged: (value) => selectPosition(value.round())),
+						const SizedBox(height: 5),
+						Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [positionButton(0), positionButton(25), positionButton(50), positionButton(75), positionButton(100)]),
+						const SizedBox(height: 25),
+						SizedBox(width: double.infinity, height: 52, child: ElevatedButton(onPressed: setValve, child: Text('SET VALVE TO $selectedPosition%', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)))),
+                                                const SizedBox(height: 10),
+                                                SizedBox(width: double.infinity, height: 52, child: OutlinedButton(onPressed: stopValve, child: const Text('STOP VALVE', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)))),
+					]))),
+					const SizedBox(height: 20),
                                         if (lastCommandJson.isNotEmpty)
-                                                CommandJsonCard(commandJson: lastCommandJson),                                        const SizedBox(height: 20),					const Row(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.circle, size: 10, color: Colors.grey), SizedBox(width: 8), Text('Controller not connected', style: TextStyle(color: Colors.grey))]),
+                                                Card(
+                                                        child: Padding(
+                                                                padding: const EdgeInsets.all(16),
+                                                                child: Column(
+                                                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                                                        children: [
+                                                                                const Text(
+                                                                                        'COMMAND JSON',
+                                                                                        style: TextStyle(
+                                                                                                fontSize: 16,
+                                                                                                fontWeight: FontWeight.bold,
+                                                                                        ),
+                                                                                ),
+                                                                                const SizedBox(height: 10),
+                                                                                SelectableText(
+                                                                                        lastCommandJson,
+                                                                                        style: const TextStyle(
+                                                                                                fontFamily: 'monospace',
+                                                                                                fontSize: 13,
+                                                                                        ),
+                                                                                ),
+                                                                        ],
+                                                                ),
+                                                        ),
+                                                ),
+                                        const SizedBox(height: 20),					const Row(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.circle, size: 10, color: Colors.grey), SizedBox(width: 8), Text('Controller not connected', style: TextStyle(color: Colors.grey))]),
 				]),
 			),
 		);
