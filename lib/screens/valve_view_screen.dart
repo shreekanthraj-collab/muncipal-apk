@@ -114,7 +114,7 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
             const SizedBox(height: 12),
             const Text('VALVE ID', style: TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 6),
-            DropdownButtonFormField<String>(value: selectedValveId, decoration: const InputDecoration(border: OutlineInputBorder()), items: valveIds.map((id) => DropdownMenuItem(value: id, child: Text(id))).toList(), onChanged: chooseValve),
+            DropdownButtonFormField<String>(initialValue: selectedValveId, decoration: const InputDecoration(border: OutlineInputBorder()), items: valveIds.map((id) => DropdownMenuItem(value: id, child: Text(id))).toList(), onChanged: chooseValve),
             const SizedBox(height: 12),
             Row(children: [const Expanded(child: Text('FW VERSION', style: TextStyle(fontWeight: FontWeight.bold))), Text(widget.isLora ? 'LoRa FW 1.0.0' : 'GSM FW 1.0.0')]),
           ]))),
