@@ -55,8 +55,23 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
     });
   }
 
-  Future<void> send(String command, {int value = 0}) async {
-    final packet = ValveCommand(valveId: selectedValveId, command: command, value: value);
+  Future<void> send(String command, {int value = 0, Map<String, int>? fields}) async {
+    final packet = ValveCommand(
+      valveId: selectedValveId,
+      command: command,
+      value: value,
+      year: fields?['year'],
+      month: fields?['month'],
+      day: fields?['day'],
+      hour: fields?['hour'],
+      minute: fields?['minute'],
+      second: fields?['second'],
+      wday: fields?['wday'],
+      slot: fields?['slot'],
+      enabled: fields?['enabled'],
+      action: fields?['action'],
+      days: fields?['days'],
+    );
     debugPrint(const JsonEncoder.withIndent('  ').convert(packet.toJson()));
     if (!mqtt.connected) return;
     try {
@@ -190,13 +205,52 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
     const Divider(height: 22),
     Row(children: [Expanded(child: _small('CLOCK VIEW', () => send('CLOCK_VIEW'))), const SizedBox(width: 8), Expanded(child: _small('START TIME', () => send('START_TIME')))]),
     const SizedBox(height: 8),
-    Row(children: [Expanded(child: _small('STOP TIME', () => send('STOP_TIME'))), const SizedBox(width: 8), Expanded(child: _small('DATE SET', () => send('SET_TIME')))]),
+    Row(children: [Expanded(child: _small('STOP TIME', () => send('STOP_TIME'))), const SizedBox(width: 8), Expanded(child: _small('DATE SET', _setClock))]),
     const SizedBox(height: 8),
     SizedBox(width: double.infinity, child: OutlinedButton(onPressed: () => send('WEEK'), child: const Text('WEEK'))),
   ]));
 
+  Future<void> _setClock() async {
+    final now = DateTime.now();
+    final date = await showDatePicker(context: context, initialDate: now, firstDate: DateTime(2020), lastDate: DateTime(2099));
+    if (date == null || !mounted) return;
+    final time = await showTimePicker(context: context, initialTime: TimeOfDay.fromDateTime(now));
+    if (time == null || !mounted) return;
+    final dt = DateTime(date.year, date.month, date.day, time.hour, time.minute);
+    await send('SET_TIME', fields: {'year': dt.year, 'month': dt.month, 'day': dt.day, 'hour': dt.hour, 'minute': dt.minute, 'second': dt.second, 'wday': dt.weekday % 7});
+  }
+
   Future<void> _setSchedule() async {
-    await showDialog<void>(context: context, builder: (context) => AlertDialog(title: const Text('Set Schedule'), content: const Text('Select date, start time and stop time for the valve schedule.'), actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('CANCEL')), FilledButton(onPressed: () { Navigator.pop(context); send('SET_SCHEDULE'); }, child: const Text('SAVE'))]));
+    int slot = 0;
+    bool enabled = true;
+    int action = 1;
+    int days = 127;
+    TimeOfDay start = const TimeOfDay(hour: 6, minute: 0);
+    TimeOfDay stop = const TimeOfDay(hour: 18, minute: 0);
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('SET SCHEDULE'),
+          content: SingleChildScrollView(
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              DropdownButtonFormField<int>(initialValue: slot, decoration: const InputDecoration(labelText: 'Slot'), items: List.generate(8, (i) => DropdownMenuItem(value: i, child: Text('Slot $i'))), onChanged: (v) => setDialogState(() => slot = v ?? 0)),
+              SwitchListTile(contentPadding: EdgeInsets.zero, title: const Text('Enabled'), value: enabled, onChanged: (v) => setDialogState(() => enabled = v)),
+              DropdownButtonFormField<int>(initialValue: action, decoration: const InputDecoration(labelText: 'Action'), items: const [DropdownMenuItem(value: 1, child: Text('OPEN')), DropdownMenuItem(value: 0, child: Text('CLOSE'))], onChanged: (v) => setDialogState(() => action = v ?? 1)),
+              ListTile(title: const Text('Start'), subtitle: Text(start.format(context)), trailing: const Icon(Icons.access_time), onTap: () async { final t = await showTimePicker(context: context, initialTime: start); if (t != null) setDialogState(() => start = t); }),
+              ListTile(title: const Text('Stop'), subtitle: Text(stop.format(context)), trailing: const Icon(Icons.access_time), onTap: () async { final t = await showTimePicker(context: context, initialTime: stop); if (t != null) setDialogState(() => stop = t); }),
+              const SizedBox(height: 4),
+              Wrap(spacing: 4, children: List.generate(7, (i) { final bit = 1 << i; const names = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']; return FilterChip(label: Text(names[i]), selected: (days & bit) != 0, onSelected: (v) => setDialogState(() => days = v ? days | bit : days & ~bit)); })),
+            ]),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('CANCEL')),
+            FilledButton(onPressed: () async { Navigator.pop(dialogContext); await send('SET_SCHEDULE', fields: {'slot': slot, 'enabled': enabled ? 1 : 0, 'action': action, 'days': days, 'hour': start.hour, 'minute': start.minute, 'second': stop.hour * 3600 + stop.minute * 60}); }, child: const Text('SAVE')),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _card(String title, Widget child) => Card(child: Padding(padding: const EdgeInsets.all(14), child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)), const SizedBox(height: 10), child])));
