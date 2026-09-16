@@ -1,4 +1,7 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -23,9 +26,32 @@ class _ValveMapItem {
   final bool isGsm;
   final double dx;
   final double dy;
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'latitude': latitude,
+        'longitude': longitude,
+        'is_gsm': isGsm,
+        'dx': dx,
+        'dy': dy,
+      };
+
+  factory _ValveMapItem.fromJson(Map<String, dynamic> json) {
+    return _ValveMapItem(
+      id: json['id'] as String,
+      latitude: (json['latitude'] as num).toDouble(),
+      longitude: (json['longitude'] as num).toDouble(),
+      isGsm: json['is_gsm'] as bool? ?? false,
+      dx: (json['dx'] as num?)?.toDouble() ?? .48,
+      dy: (json['dy'] as num?)?.toDouble() ?? .48,
+    );
+  }
 }
 
 class _MapScreenState extends State<MapScreen> {
+  static const _valvesKey = 'map_valves_v1';
+  static const _mapNameKey = 'map_name_v1';
+
   final TextEditingController _mapNameController =
       TextEditingController(text: 'Farm A - North Field');
 
@@ -57,6 +83,55 @@ class _MapScreenState extends State<MapScreen> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _loadMapData();
+  }
+
+  Future<void> _loadMapData() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_valvesKey);
+    final savedName = prefs.getString(_mapNameKey);
+
+    if (!mounted) return;
+
+    if (savedName != null && savedName.trim().isNotEmpty) {
+      _mapNameController.text = savedName;
+    }
+
+    if (raw == null) return;
+
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! List) return;
+
+      final loaded = decoded
+          .whereType<Map>()
+          .map((item) => _ValveMapItem.fromJson(
+                Map<String, dynamic>.from(item),
+              ))
+          .toList();
+
+      setState(() {
+        _valves
+          ..clear()
+          ..addAll(loaded);
+      });
+    } catch (_) {
+      // Keep the built-in frozen valve list if persisted data is malformed.
+    }
+  }
+
+  Future<void> _saveMapData() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+      _valvesKey,
+      jsonEncode(_valves.map((valve) => valve.toJson()).toList()),
+    );
+    await prefs.setString(_mapNameKey, _mapNameController.text.trim());
+  }
+
+  @override
   void dispose() {
     _mapNameController.dispose();
     super.dispose();
@@ -82,9 +157,10 @@ class _MapScreenState extends State<MapScreen> {
             child: const Text('CANCEL'),
           ),
           FilledButton(
-            onPressed: () {
+            onPressed: () async {
               setState(() => _mapNameController.text = controller.text.trim());
-              Navigator.pop(context);
+              await _saveMapData();
+              if (context.mounted) Navigator.pop(context);
             },
             child: const Text('SAVE'),
           ),
@@ -134,6 +210,14 @@ class _MapScreenState extends State<MapScreen> {
               final lat = double.tryParse(latController.text.trim());
               final lng = double.tryParse(lngController.text.trim());
               if (id.isEmpty || lat == null || lng == null) return;
+
+              if (_valves.any((item) => item.id.toUpperCase() == id.toUpperCase())) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Valve $id already exists')),
+                );
+                return;
+              }
+
               Navigator.pop(
                 context,
                 _ValveMapItem(
@@ -154,7 +238,8 @@ class _MapScreenState extends State<MapScreen> {
 
     if (!mounted || result == null) return;
     setState(() => _valves.add(result));
-    _showAdded(result);
+    await _saveMapData();
+    if (mounted) _showAdded(result);
   }
 
   void _showAdded(_ValveMapItem valve) {
@@ -181,8 +266,11 @@ class _MapScreenState extends State<MapScreen> {
     );
   }
 
-  void _removeValve(_ValveMapItem valve) {
+  Future<void> _removeValve(_ValveMapItem valve) async {
     setState(() => _valves.removeWhere((item) => item.id == valve.id));
+    await _saveMapData();
+    if (!mounted) return;
+
     showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
