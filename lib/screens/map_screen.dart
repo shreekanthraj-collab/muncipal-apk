@@ -288,7 +288,12 @@ class _MapScreenState extends State<MapScreen> {
       builder: (context) => AlertDialog(
         icon: const Icon(Icons.check_circle, color: Colors.green, size: 58),
         title: const Text('Valve Added Successfully'),
-        content: Text('Valve ID: ${valve.id}\nZone: ${valve.zone}\nLatitude: ${valve.latitude.toStringAsFixed(6)}\nLongitude: ${valve.longitude.toStringAsFixed(6)}'),
+        content: Text(
+          'Valve ID: ${valve.id}\n'
+          'Zone: ${valve.zone}\n'
+          'Latitude: ${valve.latitude.toStringAsFixed(6)}\n'
+          'Longitude: ${valve.longitude.toStringAsFixed(6)}',
+        ),
         actions: [SizedBox(width: double.infinity, child: FilledButton(onPressed: () => Navigator.pop(context), child: const Text('OK')))],
       ),
     );
@@ -421,8 +426,6 @@ class _MapSurfaceState extends State<_MapSurface> {
   bool _locating = false;
   String _locationStatus = 'Press location button to locate phone';
 
-  // Keep the map centered on the valve deployment area at startup.
-  // GPS is user-triggered so a phone in another city cannot hide the valves.
   static const LatLng _defaultCenter = LatLng(14.599232, 120.984321);
 
   Future<void> _locatePhone() async {
@@ -459,6 +462,10 @@ class _MapSurfaceState extends State<_MapSurface> {
 
   @override
   Widget build(BuildContext context) {
+    final initialCenter = widget.valves.isNotEmpty
+        ? LatLng(widget.valves.first.latitude, widget.valves.first.longitude)
+        : _defaultCenter;
+
     final markers = <Marker>[
       ...widget.valves.map((valve) => Marker(
         point: LatLng(valve.latitude, valve.longitude), width: 110, height: 70,
@@ -494,11 +501,23 @@ class _MapSurfaceState extends State<_MapSurface> {
         child: Stack(children: [
           FlutterMap(
             mapController: _mapController,
-            options: const MapOptions(initialCenter: _defaultCenter, initialZoom: 15, minZoom: 3, maxZoom: 19),
+            options: MapOptions(
+              initialCenter: initialCenter,
+              initialZoom: 15,
+              minZoom: 3,
+              maxZoom: 19,
+            ),
             children: [
               TileLayer(
                 urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                userAgentPackageName: 'com.orb.valve.app',
+                userAgentPackageName: 'com.example.orb_valve_app',
+                tileProvider: NetworkTileProvider(
+                  headers: const {
+                    'User-Agent': 'ORB-Valve-App/1.0',
+                  },
+                ),
+                panBuffer: 0,
+                keepBuffer: 1,
               ),
               MarkerLayer(markers: markers),
               RichAttributionWidget(attributions: [TextSourceAttribution('OpenStreetMap contributors')]),
