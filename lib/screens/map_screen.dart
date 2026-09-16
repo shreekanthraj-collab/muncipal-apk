@@ -36,7 +36,7 @@ class _MapScreenState extends State<MapScreen> {
           Card(child: Padding(padding: const EdgeInsets.all(14), child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             const Text('VALVE ID (GSM + LoRa)', style: TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 7),
-            DropdownButtonFormField<String>(value: selectedId, decoration: const InputDecoration(border: OutlineInputBorder()), items: registered.map((id) => DropdownMenuItem(value: id, child: Text(id))).toList(), onChanged: (v) { if (v != null) setState(() => selectedId = v); }),
+            DropdownButtonFormField<String>(initialValue: selectedId, decoration: const InputDecoration(border: OutlineInputBorder()), items: registered.map((id) => DropdownMenuItem(value: id, child: Text(id))).toList(), onChanged: (v) { if (v != null) setState(() => selectedId = v); }),
             const SizedBox(height: 10),
             FilledButton.icon(onPressed: addValve, icon: const Icon(Icons.add), label: const Text('ADD VALVE')),
           ]))),
