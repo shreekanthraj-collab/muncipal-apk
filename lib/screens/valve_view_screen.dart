@@ -31,6 +31,22 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
   double ocTrip = 5.0;
   double ocReset = 6.0;
 
+  TimeOfDay _scheduleStart = const TimeOfDay(hour: 6, minute: 0);
+  TimeOfDay _scheduleStop = const TimeOfDay(hour: 18, minute: 0);
+  DateTime _clockDate = DateTime.now();
+  final Set<int> _scheduleDays = <int>{1, 2, 3, 4, 5, 6, 7};
+  bool _scheduleEnabled = true;
+
+  static const List<String> _dayNames = <String>[
+    'Mon',
+    'Tue',
+    'Wed',
+    'Thu',
+    'Fri',
+    'Sat',
+    'Sun',
+  ];
+
   @override
   void initState() {
     super.initState();
@@ -57,6 +73,16 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
 
   Future<void> send(String command, {int value = 0}) async {
     final packet = ValveCommand(valveId: selectedValveId, command: command, value: value);
+    debugPrint(const JsonEncoder.withIndent('  ').convert(packet.toJson()));
+    if (!mqtt.connected) return;
+    try {
+      await mqtt.sendCommand(packet);
+    } catch (_) {
+      if (mounted) setState(() => status = 'TRANSPORT ERROR');
+    }
+  }
+
+  Future<void> _sendPacket(ValveCommand packet) async {
     debugPrint(const JsonEncoder.withIndent('  ').convert(packet.toJson()));
     if (!mqtt.connected) return;
     try {
@@ -114,7 +140,7 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
             const SizedBox(height: 12),
             const Text('VALVE ID', style: TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 6),
-            DropdownButtonFormField<String>(value: selectedValveId, decoration: const InputDecoration(border: OutlineInputBorder()), items: valveIds.map((id) => DropdownMenuItem(value: id, child: Text(id))).toList(), onChanged: chooseValve),
+            DropdownButtonFormField<String>(initialValue: selectedValveId, decoration: const InputDecoration(border: OutlineInputBorder()), items: valveIds.map((id) => DropdownMenuItem(value: id, child: Text(id))).toList(), onChanged: chooseValve),
             const SizedBox(height: 12),
             Row(children: [const Expanded(child: Text('FW VERSION', style: TextStyle(fontWeight: FontWeight.bold))), Text(widget.isLora ? 'LoRa FW 1.0.0' : 'GSM FW 1.0.0')]),
           ]))),
@@ -158,17 +184,17 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
     const SizedBox(height: 12),
     SizedBox(height: 48, width: double.infinity, child: FilledButton(onPressed: setValve, child: Text('SET % OPEN — $selectedPosition%'))),
     const SizedBox(height: 8),
-    Row(children: [Expanded(child: FilledButton(onPressed: () async { await send('OPEN'); setState(() => status = 'OPENING'); }, child: const Text('OPEN'))), const SizedBox(width: 8), Expanded(child: FilledButton(onPressed: () async { await send('CLOSE'); setState(() => status = 'CLOSING'); }, child: const Text('CLOSE')))]),
+    Row(children: [Expanded(child: FilledButton(onPressed: () async { await send('OPEN'); if (mounted) setState(() => status = 'OPENING'); }, child: const Text('OPEN'))), const SizedBox(width: 8), Expanded(child: FilledButton(onPressed: () async { await send('CLOSE'); if (mounted) setState(() => status = 'CLOSING'); }, child: const Text('CLOSE')))]),
     const SizedBox(height: 8),
-    Row(children: [Expanded(child: FilledButton(onPressed: () async { await send('STOP'); setState(() => status = 'STOPPED'); }, child: const Text('STOP'))), const SizedBox(width: 8), Expanded(child: FilledButton.tonal(onPressed: () async { await send('ESTOP'); setState(() => status = 'E-STOP'); }, child: const Text('E-STOP')))]),
+    Row(children: [Expanded(child: FilledButton(onPressed: () async { await send('STOP'); if (mounted) setState(() => status = 'STOPPED'); }, child: const Text('STOP'))), const SizedBox(width: 8), Expanded(child: FilledButton.tonal(onPressed: () async { await send('ESTOP'); if (mounted) setState(() => status = 'E-STOP'); }, child: const Text('E-STOP')))]),
   ]));
 
   Widget _calibrationCard() => _card('VALVE CALIBRATION', Column(children: [
     Align(alignment: Alignment.centerLeft, child: Text('State: $calibration')),
     const SizedBox(height: 8),
-    Row(children: [Expanded(child: _small('START', () async { await send('CALIBRATE'); setState(() => calibration = 'STARTED'); })), const SizedBox(width: 8), Expanded(child: _small('OPEN', () async { await send('CAL_SET', value: 1); setState(() => calibration = 'OPEN'); }))]),
+    Row(children: [Expanded(child: _small('START', () async { await send('CALIBRATE'); if (mounted) setState(() => calibration = 'STARTED'); })), const SizedBox(width: 8), Expanded(child: _small('OPEN', () async { await send('CAL_SET', value: 1); if (mounted) setState(() => calibration = 'OPEN'); }))]),
     const SizedBox(height: 8),
-    Row(children: [Expanded(child: _small('CLOSE', () async { await send('CAL_SET', value: 0); setState(() => calibration = 'CLOSE'); })), const SizedBox(width: 8), Expanded(child: _small('CANCEL / SAVE', () async { await send('CAL_ABORT'); setState(() => calibration = 'SAVED'); }))]),
+    Row(children: [Expanded(child: _small('CLOSE', () async { await send('CAL_SET', value: 0); if (mounted) setState(() => calibration = 'CLOSE'); })), const SizedBox(width: 8), Expanded(child: _small('CANCEL / SAVE', () async { await send('CAL_ABORT'); if (mounted) setState(() => calibration = 'SAVED'); }))]),
   ]));
 
   Widget _voltageCard() => _card('VOLTAGE / BYPASS', Column(children: [
@@ -186,17 +212,102 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
   Widget _scheduleCard() => _card('SCHEDULING / CLOCK', Column(children: [
     Row(children: [Expanded(child: _small('VIEW SCHEDULE', () => send('GET_SCHEDULE'))), const SizedBox(width: 8), Expanded(child: _small('START', () => send('SCHEDULE_START')))]),
     const SizedBox(height: 8),
-    Row(children: [Expanded(child: _small('SET SCHEDULE', _setSchedule)), const SizedBox(width: 8), Expanded(child: _small('CANCEL ALL', () => send('CLR_SCHEDULE')))]),
+    Row(children: [Expanded(child: _small('SET SCHEDULE', _setSchedule)), const SizedBox(width: 8), Expanded(child: _small('CANCEL ALL', _clearSchedule))]),
     const Divider(height: 22),
-    Row(children: [Expanded(child: _small('CLOCK VIEW', () => send('CLOCK_VIEW'))), const SizedBox(width: 8), Expanded(child: _small('START TIME', () => send('START_TIME')))]),
+    Row(children: [const Expanded(child: Text('Schedule')), Switch(value: _scheduleEnabled, onChanged: (v) => setState(() => _scheduleEnabled = v))]),
+    Row(children: [Expanded(child: _timeButton('OPEN', _scheduleStart, () => _pickTime(true))), const SizedBox(width: 8), Expanded(child: _timeButton('CLOSE', _scheduleStop, () => _pickTime(false)))]),
     const SizedBox(height: 8),
-    Row(children: [Expanded(child: _small('STOP TIME', () => send('STOP_TIME'))), const SizedBox(width: 8), Expanded(child: _small('DATE SET', () => send('SET_TIME')))]),
+    Align(alignment: Alignment.centerLeft, child: const Text('DAYS', style: TextStyle(fontWeight: FontWeight.bold))),
+    const SizedBox(height: 4),
+    Wrap(spacing: 4, children: List.generate(7, (index) {
+      final day = index + 1;
+      return FilterChip(label: Text(_dayNames[index]), selected: _scheduleDays.contains(day), onSelected: (selected) { setState(() { if (selected) { _scheduleDays.add(day); } else { _scheduleDays.remove(day); } }); });
+    })),
     const SizedBox(height: 8),
-    SizedBox(width: double.infinity, child: OutlinedButton(onPressed: () => send('WEEK'), child: const Text('WEEK'))),
+    SizedBox(width: double.infinity, child: OutlinedButton.icon(onPressed: _setClock, icon: const Icon(Icons.schedule), label: Text('SET CLOCK — ${_formatDate(_clockDate)} ${_formatTime(TimeOfDay.fromDateTime(_clockDate))}'))),
+    const SizedBox(height: 8),
+    SizedBox(width: double.infinity, child: FilledButton.tonal(onPressed: () => send('GET_SCHEDULE'), child: const Text('READ CURRENT SCHEDULE'))),
   ]));
 
+  Widget _timeButton(String label, TimeOfDay time, VoidCallback onPressed) => OutlinedButton(onPressed: onPressed, child: Text('$label\n${_formatTime(time)}', textAlign: TextAlign.center));
+
+  String _formatTime(TimeOfDay time) => '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
+
+  String _formatDate(DateTime date) => '${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+
+  Future<void> _pickTime(bool start) async {
+    final picked = await showTimePicker(context: context, initialTime: start ? _scheduleStart : _scheduleStop);
+    if (picked == null || !mounted) return;
+    setState(() { if (start) { _scheduleStart = picked; } else { _scheduleStop = picked; } });
+  }
+
+  Future<void> _setClock() async {
+    final picked = await showDatePicker(context: context, initialDate: _clockDate, firstDate: DateTime(2020), lastDate: DateTime(2099));
+    if (picked == null || !mounted) return;
+    final time = await showTimePicker(context: context, initialTime: TimeOfDay.fromDateTime(_clockDate));
+    if (time == null || !mounted) return;
+    _clockDate = DateTime(picked.year, picked.month, picked.day, time.hour, time.minute);
+    final packet = ValveCommand(
+      valveId: selectedValveId,
+      command: 'SET_TIME',
+      value: 0,
+      year: _clockDate.year,
+      month: _clockDate.month,
+      day: _clockDate.day,
+      hour: _clockDate.hour,
+      minute: _clockDate.minute,
+      second: 0,
+      wday: _clockDate.weekday,
+    );
+    await _sendPacket(packet);
+    if (mounted) setState(() {});
+  }
+
+  int _dayMask() {
+    var mask = 0;
+    for (final day in _scheduleDays) {
+      mask |= 1 << (day - 1);
+    }
+    return mask;
+  }
+
   Future<void> _setSchedule() async {
-    await showDialog<void>(context: context, builder: (context) => AlertDialog(title: const Text('Set Schedule'), content: const Text('Select date, start time and stop time for the valve schedule.'), actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('CANCEL')), FilledButton(onPressed: () { Navigator.pop(context); send('SET_SCHEDULE'); }, child: const Text('SAVE'))]));
+    if (_scheduleDays.isEmpty) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Select at least one day')));
+      return;
+    }
+    final days = _dayMask();
+    final enabled = _scheduleEnabled ? 1 : 0;
+    await _sendPacket(ValveCommand(
+      valveId: selectedValveId,
+      command: 'SET_SCHEDULE',
+      value: 0,
+      slot: 0,
+      enabled: enabled,
+      action: 1,
+      days: days,
+      hour: _scheduleStart.hour,
+      minute: _scheduleStart.minute,
+    ));
+    await _sendPacket(ValveCommand(
+      valveId: selectedValveId,
+      command: 'SET_SCHEDULE',
+      value: 0,
+      slot: 1,
+      enabled: enabled,
+      action: 0,
+      days: days,
+      hour: _scheduleStop.hour,
+      minute: _scheduleStop.minute,
+    ));
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_scheduleEnabled ? 'Schedule saved' : 'Schedule disabled')));
+    }
+  }
+
+  Future<void> _clearSchedule() async {
+    await send('CLR_SCHEDULE');
+    if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('All schedules cleared')));
   }
 
   Widget _card(String title, Widget child) => Card(child: Padding(padding: const EdgeInsets.all(14), child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)), const SizedBox(height: 10), child])));
