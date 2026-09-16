@@ -55,7 +55,11 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
     });
   }
 
-  Future<void> send(String command, {int value = 0, Map<String, int>? fields}) async {
+  Future<void> send(
+    String command, {
+    int value = 0,
+    Map<String, int>? fields,
+  }) async {
     final packet = ValveCommand(
       valveId: selectedValveId,
       command: command,
@@ -246,7 +250,27 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
           ),
           actions: [
             TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('CANCEL')),
-            FilledButton(onPressed: () async { Navigator.pop(dialogContext); await send('SET_SCHEDULE', fields: {'slot': slot, 'enabled': enabled ? 1 : 0, 'action': action, 'days': days, 'hour': start.hour, 'minute': start.minute, 'second': stop.hour * 3600 + stop.minute * 60}); }, child: const Text('SAVE')),
+            FilledButton(
+              onPressed: () async {
+                final startSeconds = start.hour * 3600 + start.minute * 60;
+                final stopSeconds = stop.hour * 3600 + stop.minute * 60;
+                Navigator.pop(dialogContext);
+                await send('SET_SCHEDULE', fields: {
+                  'slot': slot,
+                  'enabled': enabled ? 1 : 0,
+                  'action': action,
+                  'days': days,
+                  'hour': start.hour,
+                  'minute': start.minute,
+                  'second': stopSeconds,
+                  'wday': stopSeconds ~/ 60,
+                  'year': startSeconds,
+                  'month': stop.hour,
+                  'day': stop.minute,
+                });
+              },
+              child: const Text('SAVE'),
+            ),
           ],
         ),
       ),
