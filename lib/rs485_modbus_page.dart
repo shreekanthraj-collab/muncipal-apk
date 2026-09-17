@@ -63,9 +63,25 @@ class _Rs485ModbusPageState extends State<Rs485ModbusPage> {
     try {
       final data = Map<String, dynamic>.from(jsonDecode(raw) as Map);
       final savedValve = data['valve']?.toString();
+      final savedValveIds = (data['valveIds'] as List<dynamic>?)
+              ?.map((item) => item.toString())
+              .where((item) => item.isNotEmpty)
+              .toList() ??
+          [];
       setState(() {
         zone = data['zone']?.toString() ?? zone;
         ward = data['ward']?.toString() ?? ward;
+        if (savedValveIds.isNotEmpty) {
+          valveIds = [
+            ...{
+              'ORBI-VALVE-001',
+              'ORBI-VALVE-002',
+              'ORBI-VALVE-003',
+              ...savedValveIds,
+            },
+          ];
+        }
+
         if (savedValve != null && savedValve.isNotEmpty) {
           if (!valveIds.contains(savedValve)) {
             valveIds = [...valveIds, savedValve];
@@ -82,7 +98,12 @@ class _Rs485ModbusPageState extends State<Rs485ModbusPage> {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(
       _selectionKey,
-      jsonEncode({'zone': zone, 'ward': ward, 'valve': valve}),
+      jsonEncode({
+        'zone': zone,
+        'ward': ward,
+        'valve': valve,
+        'valveIds': valveIds,
+      }),
     );
   }
 
@@ -958,3 +979,4 @@ class _DriverAction extends StatelessWidget {
     );
   }
 }
+
