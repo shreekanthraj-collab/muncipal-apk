@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'gsm_screen.dart';
 import 'lora_screen.dart';
 import 'map_screen.dart';
-import 'rs485_screen.dart';
+import '../rs485_modbus_page.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -34,7 +34,7 @@ class HomeScreen extends StatelessWidget {
               const SizedBox(height: 14),
               _viewButton(context, 'MAP VIEW', Icons.map, const MapScreen()),
               const SizedBox(height: 14),
-              _viewButton(context, 'RS485 VIEW', Icons.account_tree, const Rs485Screen()),
+              _viewButton(context, 'RS485 VIEW', Icons.account_tree, const Rs485ModbusPage()),
             ],
           ),
         ),
