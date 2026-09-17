@@ -38,7 +38,8 @@ class _ValveMapItem {
       id: json['id'] as String,
       latitude: (json['latitude'] as num).toDouble(),
       longitude: (json['longitude'] as num).toDouble(),
-      isGsm: json['isGsm'] as bool? ?? json['id'].toString().toUpperCase().startsWith('GSM'),
+      isGsm: json['isGsm'] as bool? ??
+          json['id'].toString().toUpperCase().startsWith('GSM'),
     );
   }
 }
@@ -47,7 +48,8 @@ class _MapScreenState extends State<MapScreen> {
   static const _storageKey = 'municipal_map_valves_v2';
 
   final MapController _mapController = MapController();
-  final TextEditingController _mapNameController = TextEditingController(text: 'Municipal Valve Map');
+  final TextEditingController _mapNameController =
+      TextEditingController(text: 'Municipal Valve Map');
 
   List<_ValveMapItem> _valves = const [];
   LatLng? _phoneLocation;
@@ -78,7 +80,8 @@ class _MapScreenState extends State<MapScreen> {
       if (raw != null && raw.isNotEmpty) {
         final decoded = jsonDecode(raw) as List<dynamic>;
         final loaded = decoded
-            .map((item) => _ValveMapItem.fromJson(Map<String, dynamic>.from(item as Map)))
+            .map((item) =>
+                _ValveMapItem.fromJson(Map<String, dynamic>.from(item as Map)))
             .toList();
         if (mounted) {
           setState(() {
@@ -114,7 +117,9 @@ class _MapScreenState extends State<MapScreen> {
 
     try {
       if (!await Geolocator.isLocationServiceEnabled()) {
-        if (mounted) setState(() => _locationStatus = 'Location service is OFF');
+        if (mounted) {
+          setState(() => _locationStatus = 'Location service is OFF');
+        }
         return;
       }
 
@@ -123,16 +128,21 @@ class _MapScreenState extends State<MapScreen> {
         permission = await Geolocator.requestPermission();
       }
       if (permission == LocationPermission.denied) {
-        if (mounted) setState(() => _locationStatus = 'Location permission denied');
+        if (mounted) {
+          setState(() => _locationStatus = 'Location permission denied');
+        }
         return;
       }
       if (permission == LocationPermission.deniedForever) {
-        if (mounted) setState(() => _locationStatus = 'Location permission blocked');
+        if (mounted) {
+          setState(() => _locationStatus = 'Location permission blocked');
+        }
         return;
       }
 
       final position = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
+        locationSettings:
+            const LocationSettings(accuracy: LocationAccuracy.high),
       );
       final location = LatLng(position.latitude, position.longitude);
       if (!mounted) return;
@@ -144,7 +154,9 @@ class _MapScreenState extends State<MapScreen> {
         if (mounted) _mapController.move(location, 16);
       });
     } catch (_) {
-      if (mounted) setState(() => _locationStatus = 'Unable to get phone location');
+      if (mounted) {
+        setState(() => _locationStatus = 'Unable to get phone location');
+      }
     } finally {
       if (mounted) setState(() => _locating = false);
     }
@@ -170,31 +182,57 @@ class _MapScreenState extends State<MapScreen> {
               TextField(
                 controller: idController,
                 autofocus: true,
-                decoration: const InputDecoration(labelText: 'Valve ID', border: OutlineInputBorder()),
+                decoration: const InputDecoration(
+                  labelText: 'Valve ID',
+                  border: OutlineInputBorder(),
+                ),
               ),
               const SizedBox(height: 10),
               TextField(
                 controller: latController,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
-                decoration: const InputDecoration(labelText: 'Latitude', border: OutlineInputBorder()),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                  signed: true,
+                ),
+                decoration: const InputDecoration(
+                  labelText: 'Latitude',
+                  border: OutlineInputBorder(),
+                ),
               ),
               const SizedBox(height: 10),
               TextField(
                 controller: lngController,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
-                decoration: const InputDecoration(labelText: 'Longitude', border: OutlineInputBorder()),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                  signed: true,
+                ),
+                decoration: const InputDecoration(
+                  labelText: 'Longitude',
+                  border: OutlineInputBorder(),
+                ),
               ),
             ],
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('CANCEL')),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('CANCEL'),
+          ),
           FilledButton(
             onPressed: () {
               final id = idController.text.trim();
               final lat = double.tryParse(latController.text.trim());
               final lng = double.tryParse(lngController.text.trim());
-              if (id.isEmpty || lat == null || lng == null || lat < -90 || lat > 90 || lng < -180 || lng > 180) return;
+              if (id.isEmpty ||
+                  lat == null ||
+                  lng == null ||
+                  lat < -90 ||
+                  lat > 90 ||
+                  lng < -180 ||
+                  lng > 180) {
+                return;
+              }
               Navigator.pop(
                 context,
                 _ValveMapItem(
@@ -216,8 +254,11 @@ class _MapScreenState extends State<MapScreen> {
     lngController.dispose();
     if (!mounted || result == null) return;
 
-    if (_valves.any((valve) => valve.id.toUpperCase() == result.id.toUpperCase())) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Valve ID already exists')));
+    if (_valves.any(
+        (valve) => valve.id.toUpperCase() == result.id.toUpperCase())) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Valve ID already exists')),
+      );
       return;
     }
 
@@ -227,9 +268,13 @@ class _MapScreenState extends State<MapScreen> {
     });
     await _saveValves();
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${result.id} saved to map')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${result.id} saved to map')),
+      );
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _mapController.move(LatLng(result.latitude, result.longitude), 16);
+        if (mounted) {
+          _mapController.move(LatLng(result.latitude, result.longitude), 16);
+        }
       });
     }
   }
@@ -241,7 +286,9 @@ class _MapScreenState extends State<MapScreen> {
     });
     await _saveValves();
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${valve.id} removed')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${valve.id} removed')),
+      );
     }
   }
 
@@ -262,11 +309,26 @@ class _MapScreenState extends State<MapScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.location_on, size: 40, color: valve.isGsm ? Colors.red : Colors.blue),
+              Icon(
+                Icons.location_on,
+                size: 40,
+                color: valve.isGsm ? Colors.red : Colors.blue,
+              ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(5), boxShadow: const [BoxShadow(blurRadius: 4)]),
-                child: Text(valve.id, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(5),
+                  boxShadow: const [BoxShadow(blurRadius: 4)],
+                ),
+                child: Text(
+                  valve.id,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 11,
+                  ),
+                ),
               ),
             ],
           ),
@@ -285,16 +347,142 @@ class _MapScreenState extends State<MapScreen> {
             children: [
               Container(
                 padding: const EdgeInsets.all(7),
-                decoration: BoxDecoration(color: Colors.blue, shape: BoxShape.circle, border: Border.all(color: Colors.white, width: 3)),
-                child: const Icon(Icons.my_location, color: Colors.white, size: 20),
+                decoration: BoxDecoration(
+                  color: Colors.blue,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 3),
+                ),
+                child: const Icon(
+                  Icons.my_location,
+                  color: Colors.white,
+                  size: 20,
+                ),
               ),
-              const Text('You', style: TextStyle(fontWeight: FontWeight.bold, backgroundColor: Colors.white)),
+              const Text(
+                'You',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  backgroundColor: Colors.white,
+                ),
+              ),
             ],
           ),
         ),
       );
     }
     return markers;
+  }
+
+  Widget _buildValveRow(_ValveMapItem valve) {
+    final isSelected = valve.id == _selectedId;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Material(
+        color: isSelected
+            ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.06)
+            : Theme.of(context).colorScheme.surface,
+        shape: RoundedRectangleBorder(
+          side: BorderSide(
+            color: isSelected
+                ? Theme.of(context).colorScheme.primary
+                : Theme.of(context).dividerColor,
+          ),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: () {
+            setState(() => _selectedId = valve.id);
+            _mapController.move(LatLng(valve.latitude, valve.longitude), 16);
+          },
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: valve.isGsm
+                        ? Colors.red.withValues(alpha: 0.10)
+                        : Colors.blue.withValues(alpha: 0.10),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    Icons.water_damage_outlined,
+                    color: valve.isGsm ? Colors.red : Colors.blue,
+                    size: 25,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        valve.id,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 5),
+                      Text(
+                        'Lat: ${valve.latitude.toStringAsFixed(6)}',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Theme.of(context)
+                              .colorScheme
+                              .onSurfaceVariant,
+                        ),
+                      ),
+                      Text(
+                        'Lng: ${valve.longitude.toStringAsFixed(6)}',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Theme.of(context)
+                              .colorScheme
+                              .onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    OutlinedButton.icon(
+                      onPressed: () => _removeValve(valve),
+                      icon: const Icon(Icons.delete_outline, size: 18),
+                      label: const Text('REMOVE'),
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size(0, 38),
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    FilledButton.icon(
+                      onPressed: () => _rebindValve(valve),
+                      icon: const Icon(Icons.link, size: 18),
+                      label: const Text('REBIND'),
+                      style: FilledButton.styleFrom(
+                        minimumSize: const Size(0, 38),
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -316,16 +504,33 @@ class _MapScreenState extends State<MapScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        const Text('VALVE ID (GSM + LoRa)', style: TextStyle(fontWeight: FontWeight.bold)),
+                        const Text(
+                          'VALVE ID (GSM + LoRa)',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
                         const SizedBox(height: 7),
                         DropdownButtonFormField<String>(
                           initialValue: _selectedId,
-                          decoration: const InputDecoration(border: OutlineInputBorder()),
-                          items: _valves.map((valve) => DropdownMenuItem(value: valve.id, child: Text(valve.id))).toList(),
-                          onChanged: (value) => setState(() => _selectedId = value),
+                          decoration: const InputDecoration(
+                            border: OutlineInputBorder(),
+                          ),
+                          items: _valves
+                              .map(
+                                (valve) => DropdownMenuItem(
+                                  value: valve.id,
+                                  child: Text(valve.id),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: (value) =>
+                              setState(() => _selectedId = value),
                         ),
                         const SizedBox(height: 10),
-                        FilledButton.icon(onPressed: _addValve, icon: const Icon(Icons.add), label: const Text('ADD VALVE')),
+                        FilledButton.icon(
+                          onPressed: _addValve,
+                          icon: const Icon(Icons.add),
+                          label: const Text('ADD VALVE'),
+                        ),
                       ],
                     ),
                   ),
@@ -338,14 +543,34 @@ class _MapScreenState extends State<MapScreen> {
                       children: [
                         FlutterMap(
                           mapController: _mapController,
-                          options: MapOptions(initialCenter: _phoneLocation ?? (selected == null ? _defaultCenter : LatLng(selected.latitude, selected.longitude)), initialZoom: _phoneLocation == null && selected == null ? 5 : 16, minZoom: 3, maxZoom: 19),
+                          options: MapOptions(
+                            initialCenter: _phoneLocation ??
+                                (selected == null
+                                    ? _defaultCenter
+                                    : LatLng(
+                                        selected.latitude,
+                                        selected.longitude,
+                                      )),
+                            initialZoom:
+                                _phoneLocation == null && selected == null
+                                    ? 5
+                                    : 16,
+                            minZoom: 3,
+                            maxZoom: 19,
+                          ),
                           children: [
                             TileLayer(
-                              urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                              urlTemplate:
+                                  'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                               userAgentPackageName: 'com.orb.valve.app',
                             ),
                             MarkerLayer(markers: _buildMarkers()),
-                            RichAttributionWidget(attributions: [TextSourceAttribution('OpenStreetMap contributors')]),
+                            RichAttributionWidget(
+                              attributions: [
+                                TextSourceAttribution(
+                                    'OpenStreetMap contributors'),
+                              ],
+                            ),
                           ],
                         ),
                         Positioned(
@@ -359,7 +584,10 @@ class _MapScreenState extends State<MapScreen> {
                                 _phoneLocation == null
                                     ? _locationStatus
                                     : 'My Location (GPS)\nLat: ${_phoneLocation!.latitude.toStringAsFixed(6)}  Lng: ${_phoneLocation!.longitude.toStringAsFixed(6)}',
-                                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 12,
+                                ),
                               ),
                             ),
                           ),
@@ -369,10 +597,28 @@ class _MapScreenState extends State<MapScreen> {
                           bottom: 10,
                           child: Column(
                             children: [
-                              _MapButton(icon: Icons.my_location, onPressed: _locating ? null : () => _locatePhone()),
+                              _MapButton(
+                                icon: Icons.my_location,
+                                onPressed:
+                                    _locating ? null : () => _locatePhone(),
+                              ),
                               const SizedBox(height: 4),
-                              _MapButton(icon: Icons.add, onPressed: () => _mapController.move(_mapController.camera.center, (_mapController.camera.zoom + 1).clamp(3, 19))),
-                              _MapButton(icon: Icons.remove, onPressed: () => _mapController.move(_mapController.camera.center, (_mapController.camera.zoom - 1).clamp(3, 19))),
+                              _MapButton(
+                                icon: Icons.add,
+                                onPressed: () => _mapController.move(
+                                  _mapController.camera.center,
+                                  (_mapController.camera.zoom + 1)
+                                      .clamp(3, 19),
+                                ),
+                              ),
+                              _MapButton(
+                                icon: Icons.remove,
+                                onPressed: () => _mapController.move(
+                                  _mapController.camera.center,
+                                  (_mapController.camera.zoom - 1)
+                                      .clamp(3, 19),
+                                ),
+                              ),
                             ],
                           ),
                         ),
@@ -383,35 +629,49 @@ class _MapScreenState extends State<MapScreen> {
                 const SizedBox(height: 10),
                 Card(
                   child: Padding(
-                    padding: const EdgeInsets.all(14),
+                    padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Text('VALVE LIST (${_valves.length})', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                        Row(
+                          children: [
+                            const Expanded(
+                              child: Text(
+                                'VALVE LIST',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                            Text(
+                              '(${_valves.length})',
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
                         const SizedBox(height: 8),
                         if (_valves.isEmpty)
-                          const Padding(padding: EdgeInsets.all(16), child: Text('No valves saved on this phone.', textAlign: TextAlign.center))
+                          const Padding(
+                            padding: EdgeInsets.all(16),
+                            child: Text(
+                              'No valves saved on this phone.',
+                              textAlign: TextAlign.center,
+                            ),
+                          )
                         else
-                          ..._valves.map((valve) => ListTile(
-                                leading: Icon(Icons.location_on, color: valve.isGsm ? Colors.red : Colors.blue),
-                                title: Text(valve.id),
-                                subtitle: Text('Lat: ${valve.latitude.toStringAsFixed(6)}\nLng: ${valve.longitude.toStringAsFixed(6)}'),
-                                selected: valve.id == _selectedId,
-                                onTap: () {
-                                  setState(() => _selectedId = valve.id);
-                                  _mapController.move(LatLng(valve.latitude, valve.longitude), 16);
-                                },
-                              )),
-                        if (_valves.isNotEmpty) ...[
-                          const SizedBox(height: 6),
-                          Row(
-                            children: [
-                              Expanded(child: OutlinedButton.icon(onPressed: selected == null ? null : () => _removeValve(selected), icon: const Icon(Icons.delete_outline), label: const Text('REMOVE'))),
-                              const SizedBox(width: 8),
-                              Expanded(child: FilledButton.icon(onPressed: selected == null ? null : () => _rebindValve(selected), icon: const Icon(Icons.link), label: const Text('REBIND'))),
-                            ],
+                          SizedBox(
+                            height: 430,
+                            child: ListView.builder(
+                              padding: EdgeInsets.zero,
+                              itemCount: _valves.length,
+                              itemBuilder: (context, index) =>
+                                  _buildValveRow(_valves[index]),
+                            ),
                           ),
-                        ],
                       ],
                     ),
                   ),
@@ -437,7 +697,13 @@ class _MapButton extends StatelessWidget {
       child: InkWell(
         onTap: onPressed,
         borderRadius: BorderRadius.circular(8),
-        child: Padding(padding: const EdgeInsets.all(9), child: Icon(icon, color: onPressed == null ? Colors.grey : Colors.black)),
+        child: Padding(
+          padding: const EdgeInsets.all(9),
+          child: Icon(
+            icon,
+            color: onPressed == null ? Colors.grey : Colors.black,
+          ),
+        ),
       ),
     );
   }
