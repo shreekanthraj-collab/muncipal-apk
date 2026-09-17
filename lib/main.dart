@@ -55,23 +55,26 @@ class _LoginPageState extends State<LoginPage> {
             margin: const EdgeInsets.all(24),
             child: Padding(
               padding: const EdgeInsets.all(28),
-              child: Column(mainAxisSize: MainAxisSize.min, children: [
-                const Icon(Icons.water_drop_rounded, size: 52),
-                const SizedBox(height: 10),
-                const Text('ORBI VALVE', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900)),
-                const SizedBox(height: 4),
-                const Text('Valve Management System'),
-                const SizedBox(height: 28),
-                TextField(controller: user, decoration: const InputDecoration(labelText: 'Username / Email', prefixIcon: Icon(Icons.person_outline), border: OutlineInputBorder())),
-                const SizedBox(height: 14),
-                TextField(controller: pass, obscureText: obscure, decoration: InputDecoration(labelText: 'Password', prefixIcon: const Icon(Icons.lock_outline), suffixIcon: IconButton(onPressed: () => setState(() => obscure = !obscure), icon: Icon(obscure ? Icons.visibility : Icons.visibility_off)), border: const OutlineInputBorder())),
-                const SizedBox(height: 20),
-                SizedBox(width: double.infinity, height: 52, child: FilledButton(onPressed: login, child: const Text('LOGIN', style: TextStyle(fontWeight: FontWeight.w900)))),
-                const SizedBox(height: 14),
-                TextButton(onPressed: () {}, child: const Text('Forgot Password?')),
-                const SizedBox(height: 8),
-                const Text('App Version: 1.0.0', style: TextStyle(color: Colors.grey)),
-              ]),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.water_drop_rounded, size: 52),
+                  const SizedBox(height: 10),
+                  const Text('ORBI VALVE', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900)),
+                  const SizedBox(height: 4),
+                  const Text('Valve Management System'),
+                  const SizedBox(height: 28),
+                  TextField(controller: user, decoration: const InputDecoration(labelText: 'Username / Email', prefixIcon: Icon(Icons.person_outline), border: OutlineInputBorder())),
+                  const SizedBox(height: 14),
+                  TextField(controller: pass, obscureText: obscure, decoration: InputDecoration(labelText: 'Password', prefixIcon: const Icon(Icons.lock_outline), suffixIcon: IconButton(onPressed: () => setState(() => obscure = !obscure), icon: Icon(obscure ? Icons.visibility : Icons.visibility_off)), border: const OutlineInputBorder())),
+                  const SizedBox(height: 20),
+                  SizedBox(width: double.infinity, height: 52, child: FilledButton(onPressed: login, child: const Text('LOGIN', style: TextStyle(fontWeight: FontWeight.w900)))),
+                  const SizedBox(height: 14),
+                  TextButton(onPressed: () {}, child: const Text('Forgot Password?')),
+                  const SizedBox(height: 8),
+                  const Text('App Version: 1.0.0', style: TextStyle(color: Colors.grey)),
+                ],
+              ),
             ),
           ),
         ),
@@ -121,12 +124,36 @@ const valveId = 'ORBI-VALVE-001';
 
 class DashboardPage extends StatelessWidget {
   const DashboardPage({super.key});
-  @override Widget build(BuildContext context) => AppPage(children: [
-    Header(id: valveId),
-    const Section(title: 'Protection / Health', child: HealthGrid()),
-    Section(title: 'Valve Opening', child: Column(children: [const Text('68%', style: TextStyle(fontSize: 42, fontWeight: FontWeight.w900)), const LinearProgressIndicator(value: .68), const SizedBox(height: 16), ControlButtons()])),
-    const Card(child: Padding(padding: EdgeInsets.all(14), child: SizedBox(width: double.infinity, child: Center(child: Text('STATUS — CHECK WHEN NEEDED', style: TextStyle(fontWeight: FontWeight.w900))))),
-  ]);
+
+  @override
+  Widget build(BuildContext context) {
+    return AppPage(
+      children: [
+        Header(id: valveId),
+        const Section(title: 'Protection / Health', child: HealthGrid()),
+        Section(
+          title: 'Valve Opening',
+          child: Column(
+            children: [
+              const Text('68%', style: TextStyle(fontSize: 42, fontWeight: FontWeight.w900)),
+              const LinearProgressIndicator(value: .68),
+              const SizedBox(height: 16),
+              const ControlButtons(),
+            ],
+          ),
+        ),
+        const Card(
+          child: Padding(
+            padding: EdgeInsets.all(14),
+            child: SizedBox(
+              width: double.infinity,
+              child: Center(child: Text('STATUS — CHECK WHEN NEEDED', style: TextStyle(fontWeight: FontWeight.w900))),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 }
 
 class GsmPage extends StatelessWidget {
