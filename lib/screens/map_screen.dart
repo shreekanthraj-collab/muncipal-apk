@@ -19,18 +19,24 @@ class _ValveMapItem {
     required this.latitude,
     required this.longitude,
     required this.isGsm,
+    required this.zone,
+    required this.ward,
   });
 
   final String id;
   final double latitude;
   final double longitude;
   final bool isGsm;
+  final String zone;
+  final String ward;
 
   Map<String, dynamic> toJson() => {
         'id': id,
         'latitude': latitude,
         'longitude': longitude,
         'isGsm': isGsm,
+        'zone': zone,
+        'ward': ward,
       };
 
   factory _ValveMapItem.fromJson(Map<String, dynamic> json) {
@@ -40,6 +46,8 @@ class _ValveMapItem {
       longitude: (json['longitude'] as num).toDouble(),
       isGsm: json['isGsm'] as bool? ??
           json['id'].toString().toUpperCase().startsWith('GSM'),
+      zone: json['zone']?.toString() ?? '',
+      ward: json['ward']?.toString() ?? '',
     );
   }
 }
@@ -164,6 +172,8 @@ class _MapScreenState extends State<MapScreen> {
 
   Future<void> _addValve() async {
     final idController = TextEditingController();
+    final zoneController = TextEditingController();
+    final wardController = TextEditingController();
     final latController = TextEditingController(
       text: _phoneLocation?.latitude.toStringAsFixed(6) ?? '',
     );
@@ -184,6 +194,24 @@ class _MapScreenState extends State<MapScreen> {
                 autofocus: true,
                 decoration: const InputDecoration(
                   labelText: 'Valve ID',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: zoneController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Zone No',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: wardController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Ward No',
                   border: OutlineInputBorder(),
                 ),
               ),
@@ -222,9 +250,13 @@ class _MapScreenState extends State<MapScreen> {
           FilledButton(
             onPressed: () {
               final id = idController.text.trim();
+              final zone = zoneController.text.trim();
+              final ward = wardController.text.trim();
               final lat = double.tryParse(latController.text.trim());
               final lng = double.tryParse(lngController.text.trim());
               if (id.isEmpty ||
+                  zone.isEmpty ||
+                  ward.isEmpty ||
                   lat == null ||
                   lng == null ||
                   lat < -90 ||
@@ -240,6 +272,8 @@ class _MapScreenState extends State<MapScreen> {
                   latitude: lat,
                   longitude: lng,
                   isGsm: id.toUpperCase().startsWith('GSM'),
+                  zone: zone,
+                  ward: ward,
                 ),
               );
             },
@@ -250,6 +284,8 @@ class _MapScreenState extends State<MapScreen> {
     );
 
     idController.dispose();
+    zoneController.dispose();
+    wardController.dispose();
     latController.dispose();
     lngController.dispose();
     if (!mounted || result == null) return;
@@ -452,6 +488,18 @@ class _MapScreenState extends State<MapScreen> {
                               .onSurfaceVariant,
                         ),
                       ),
+                      if (isSelected &&
+                          (valve.zone.isNotEmpty || valve.ward.isNotEmpty)) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          'Zone: ${valve.zone}    Ward: ${valve.ward}',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
