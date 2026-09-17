@@ -94,7 +94,7 @@ class _MapScreenState extends State<MapScreen> {
         if (mounted) {
           setState(() {
             _valves = loaded;
-            _selectedId = loaded.isEmpty ? null : loaded.first.id;
+            _selectedId = null;
             _loading = false;
           });
         }
