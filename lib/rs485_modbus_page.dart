@@ -15,24 +15,6 @@ class _Rs485ModbusPageState extends State<Rs485ModbusPage> {
   bool scanning = false;
   DateTime? lastScan;
 
-  @override
-  void initState() {
-    super.initState();
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-      DeviceOrientation.portraitDown,
-    ]);
-  }
-
-  @override
-  void dispose() {
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-      DeviceOrientation.portraitDown,
-    ]);
-    super.dispose();
-  }
-
   final List<_Rs485Device> devices = [
     _Rs485Device('Flow Sensor 1', '1', 'FS-100', '12.5 FL/sec', true),
     _Rs485Device('Flow Sensor 2', '2', 'FS-100', '10.8 FL/sec', true),
@@ -43,6 +25,24 @@ class _Rs485ModbusPageState extends State<Rs485ModbusPage> {
     _Rs485Device('Temperature', '7', '--', '--', null),
     _Rs485Device('Custom Device', '8', '--', '--', null),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    SystemChrome.setPreferredOrientations(const [
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+    ]);
+  }
+
+  @override
+  void dispose() {
+    SystemChrome.setPreferredOrientations(const [
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+    ]);
+    super.dispose();
+  }
 
   Future<void> _scan() async {
     setState(() => scanning = true);
@@ -85,6 +85,7 @@ class _Rs485ModbusPageState extends State<Rs485ModbusPage> {
     showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
+      isScrollControlled: true,
       builder: (context) => SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
@@ -121,127 +122,107 @@ class _Rs485ModbusPageState extends State<Rs485ModbusPage> {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(18, 12, 18, 24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _TopSelectionCard(
-            zone: zone,
-            ward: ward,
-            valve: valve,
-            onZoneChanged: (v) => setState(() => zone = v),
-            onWardChanged: (v) => setState(() => ward = v),
-            onValveChanged: (v) => setState(() => valve = v),
-            onAddValve: () => ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Add Valve is available from the valve management flow.'),
-              ),
-            ),
-          ),
-          const SizedBox(height: 14),
-          _BusStatusCard(
-            deviceCount: devices.where((d) => d.online != null).length,
-            lastScan: lastScan,
-          ),
-          const SizedBox(height: 14),
-          _SectionCard(
-            title: 'DEVICE SLOTS (8)',
-            trailing: const Text(
-              'Modbus RTU',
-              style: TextStyle(fontWeight: FontWeight.w700),
-            ),
-            child: Column(
-              children: List.generate(devices.length, (i) {
-                final d = devices[i];
-                return Padding(
-                  padding: EdgeInsets.only(
-                    bottom: i == devices.length - 1 ? 0 : 8,
-                  ),
-                  child: _DeviceSlotCard(
-                    slot: i + 1,
-                    device: d,
-                    onPressed: () => _showConfig(d, i + 1),
-                  ),
-                );
-              }),
-            ),
-          ),
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              Expanded(
-                child: _LargeActionButton(
-                  icon: Icons.search,
-                  title: scanning ? 'SCANNING…' : 'SCAN FOR DEVICES',
-                  subtitle: 'Search new Modbus devices',
-                  filled: true,
-                  onPressed: scanning ? null : _scan,
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(14, 12, 14, 24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _TopSelectionCard(
+              zone: zone,
+              ward: ward,
+              valve: valve,
+              onZoneChanged: (v) => setState(() => zone = v),
+              onWardChanged: (v) => setState(() => ward = v),
+              onValveChanged: (v) => setState(() => valve = v),
+              onAddValve: () => ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Add Valve is available from the valve management flow.'),
                 ),
               ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _LargeActionButton(
-                  icon: Icons.add,
-                  title: 'ADD DEVICE MANUALLY',
-                  subtitle: 'Enter device details',
-                  onPressed: _showAddDevice,
-                ),
+            ),
+            const SizedBox(height: 14),
+            _BusStatusCard(
+              deviceCount: devices.where((d) => d.online != null).length,
+              lastScan: lastScan,
+            ),
+            const SizedBox(height: 14),
+            _SectionCard(
+              title: 'DEVICE SLOTS (8)',
+              trailing: const Text(
+                'Modbus RTU',
+                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
               ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          _SectionCard(
-            title: 'DRIVER MANAGEMENT',
-            child: Row(
-              children: [
-                Expanded(
-                  child: _DriverTile(
+              child: Column(
+                children: List.generate(devices.length, (i) {
+                  final device = devices[i];
+                  return Padding(
+                    padding: EdgeInsets.only(
+                      bottom: i == devices.length - 1 ? 0 : 10,
+                    ),
+                    child: _DeviceSlotCard(
+                      slot: i + 1,
+                      device: device,
+                      onPressed: () => _showConfig(device, i + 1),
+                    ),
+                  );
+                }),
+              ),
+            ),
+            const SizedBox(height: 14),
+            _ActionSection(
+              scanning: scanning,
+              onScan: scanning ? null : _scan,
+              onAdd: _showAddDevice,
+            ),
+            const SizedBox(height: 14),
+            _SectionCard(
+              title: 'DRIVER MANAGEMENT',
+              child: Column(
+                children: [
+                  _DriverTile(
                     icon: Icons.manage_search,
                     title: 'SEARCH DRIVERS',
                     subtitle: 'Find compatible drivers',
                     onTap: _openDriverFlow,
                   ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _DriverTile(
+                  const SizedBox(height: 8),
+                  _DriverTile(
                     icon: Icons.list_alt,
                     title: 'CANDIDATE DRIVERS',
                     subtitle: 'View matching drivers',
                     onTap: _openDriverFlow,
                   ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _DriverTile(
+                  const SizedBox(height: 8),
+                  _DriverTile(
                     icon: Icons.download_for_offline_outlined,
                     title: 'INSTALL DRIVER',
                     subtitle: 'Configure & install',
                     onTap: _openDriverFlow,
                   ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 14),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(14),
-              child: Row(
-                children: const [
-                  Icon(Icons.info_outline),
-                  SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      'Supports Modbus RTU devices — flow sensors, level sensors, water quality, meters, and other compatible devices.',
-                    ),
-                  ),
                 ],
               ),
             ),
-          ),
-        ],
+            const SizedBox(height: 14),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(14),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: const [
+                    Icon(Icons.info_outline),
+                    SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'Supports Modbus RTU devices — flow sensors, level sensors, water quality, meters, and other compatible devices.',
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -270,7 +251,7 @@ class _TopSelectionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -296,28 +277,24 @@ class _TopSelectionCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 12),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Expanded(
-                  child: _DropdownField(
-                    label: 'VALVE ID (GSM + LoRa)',
-                    value: valve,
-                    values: const [
-                      'ORBI-VALVE-001',
-                      'ORBI-VALVE-002',
-                      'ORBI-VALVE-003',
-                    ],
-                    onChanged: onValveChanged,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                FilledButton.icon(
-                  onPressed: onAddValve,
-                  icon: const Icon(Icons.add),
-                  label: const Text('ADD VALVE'),
-                ),
+            _DropdownField(
+              label: 'VALVE ID (GSM + LoRa)',
+              value: valve,
+              values: const [
+                'ORBI-VALVE-001',
+                'ORBI-VALVE-002',
+                'ORBI-VALVE-003',
               ],
+              onChanged: onValveChanged,
+            ),
+            const SizedBox(height: 10),
+            SizedBox(
+              height: 52,
+              child: FilledButton.icon(
+                onPressed: onAddValve,
+                icon: const Icon(Icons.add),
+                label: const Text('ADD VALVE'),
+              ),
             ),
           ],
         ),
@@ -343,12 +320,18 @@ class _DropdownField extends StatelessWidget {
   Widget build(BuildContext context) {
     return DropdownButtonFormField<String>(
       initialValue: value,
+      isExpanded: true,
       decoration: InputDecoration(
         labelText: label,
         border: const OutlineInputBorder(),
       ),
       items: values
-          .map((v) => DropdownMenuItem<String>(value: v, child: Text(v)))
+          .map(
+            (v) => DropdownMenuItem<String>(
+              value: v,
+              child: Text(v, overflow: TextOverflow.ellipsis),
+            ),
+          )
           .toList(),
       onChanged: (v) {
         if (v != null) onChanged(v);
@@ -368,31 +351,28 @@ class _BusStatusCard extends StatelessWidget {
     return _SectionCard(
       title: 'RS485 BUS STATUS',
       trailing: const Chip(
-        avatar: Icon(Icons.circle, size: 10),
+        visualDensity: VisualDensity.compact,
+        avatar: Icon(Icons.circle, size: 9),
         label: Text('ONLINE'),
       ),
-      child: Row(
+      child: Column(
         children: [
-          Expanded(
-            child: _Metric(
-              icon: Icons.speed,
-              label: 'BAUD RATE',
-              value: '9600',
-            ),
+          _Metric(
+            icon: Icons.speed,
+            label: 'BAUD RATE',
+            value: '9600',
           ),
-          Expanded(
-            child: _Metric(
-              icon: Icons.hub_outlined,
-              label: 'DEVICES FOUND',
-              value: '$deviceCount / 8',
-            ),
+          const Divider(height: 20),
+          _Metric(
+            icon: Icons.hub_outlined,
+            label: 'DEVICES FOUND',
+            value: '$deviceCount / 8',
           ),
-          Expanded(
-            child: _Metric(
-              icon: Icons.schedule,
-              label: 'LAST SCAN',
-              value: lastScan == null ? '--' : _format(lastScan!),
-            ),
+          const Divider(height: 20),
+          _Metric(
+            icon: Icons.schedule,
+            label: 'LAST SCAN',
+            value: lastScan == null ? '--' : _format(lastScan!),
           ),
         ],
       ),
@@ -417,35 +397,31 @@ class _Metric extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      child: Row(
-        children: [
-          Icon(icon, size: 30),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                Text(
-                  value,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ],
-            ),
+    return Row(
+      children: [
+        Icon(icon, size: 30),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                value,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900),
+              ),
+            ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
@@ -464,114 +440,125 @@ class _DeviceSlotCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final empty = device.online == null;
+    final status = empty ? 'EMPTY' : (device.online! ? 'ONLINE' : 'OFFLINE');
 
-    return InkWell(
-      onTap: onPressed,
-      borderRadius: BorderRadius.circular(14),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(
-          border: Border.all(color: Colors.black12),
-          borderRadius: BorderRadius.circular(14),
-        ),
-        child: Row(
-          children: [
-            SizedBox(
-              width: 34,
-              child: Text(
-                '$slot',
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-            ),
-            Icon(device.icon, size: 28),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.black12),
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
                 children: [
-                  Text(
-                    device.name,
-                    style: const TextStyle(fontWeight: FontWeight.w900),
+                  Container(
+                    width: 38,
+                    height: 38,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(10),
+                      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                    ),
+                    child: Text(
+                      '$slot',
+                      style: const TextStyle(fontWeight: FontWeight.w900),
+                    ),
                   ),
-                  Text(
-                    'ID: ${device.slaveId}  |  Model: ${device.model}',
-                    style: const TextStyle(color: Colors.grey, fontSize: 12),
+                  const SizedBox(width: 10),
+                  Icon(device.icon, size: 28),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      device.name,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Chip(
+                    visualDensity: VisualDensity.compact,
+                    label: Text(status),
                   ),
                 ],
               ),
-            ),
-            SizedBox(
-              width: 92,
-              child: Text(
-                device.value,
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontWeight: FontWeight.w800),
+              const SizedBox(height: 10),
+              Text(
+                'Slave ID: ${device.slaveId}   •   Model: ${device.model}',
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(color: Colors.grey, fontSize: 12),
               ),
-            ),
-            Chip(
-              label: Text(
-                empty ? 'EMPTY' : (device.online! ? 'ONLINE' : 'OFFLINE'),
+              const SizedBox(height: 6),
+              Row(
+                children: [
+                  const Text('VALUE', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      device.value,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16),
+                    ),
+                  ),
+                  TextButton.icon(
+                    onPressed: onPressed,
+                    icon: Icon(empty ? Icons.add : Icons.settings_outlined, size: 18),
+                    label: Text(empty ? 'ADD' : 'CONFIG'),
+                  ),
+                ],
               ),
-            ),
-            const SizedBox(width: 6),
-            TextButton.icon(
-              onPressed: onPressed,
-              icon: Icon(
-                empty ? Icons.add : Icons.settings_outlined,
-                size: 18,
-              ),
-              label: Text(empty ? 'ADD' : 'CONFIG'),
-            ),
-            const Icon(Icons.chevron_right),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
-class _LargeActionButton extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final bool filled;
-  final VoidCallback? onPressed;
+class _ActionSection extends StatelessWidget {
+  final bool scanning;
+  final VoidCallback? onScan;
+  final VoidCallback onAdd;
 
-  const _LargeActionButton({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    this.filled = false,
-    required this.onPressed,
+  const _ActionSection({
+    required this.scanning,
+    required this.onScan,
+    required this.onAdd,
   });
 
   @override
   Widget build(BuildContext context) {
-    final label = Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return Column(
       children: [
-        Text(title, style: const TextStyle(fontWeight: FontWeight.w900)),
-        Text(subtitle, style: const TextStyle(fontSize: 11)),
+        SizedBox(
+          height: 56,
+          width: double.infinity,
+          child: FilledButton.icon(
+            onPressed: onScan,
+            icon: const Icon(Icons.search),
+            label: Text(scanning ? 'SCANNING…' : 'SCAN FOR DEVICES'),
+          ),
+        ),
+        const SizedBox(height: 10),
+        SizedBox(
+          height: 56,
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: onAdd,
+            icon: const Icon(Icons.add),
+            label: const Text('ADD DEVICE MANUALLY'),
+          ),
+        ),
       ],
-    );
-
-    return SizedBox(
-      height: 72,
-      child: filled
-          ? FilledButton.icon(
-              onPressed: onPressed,
-              icon: Icon(icon, size: 32),
-              label: label,
-            )
-          : OutlinedButton.icon(
-              onPressed: onPressed,
-              icon: Icon(icon, size: 30),
-              label: label,
-            ),
     );
   }
 }
@@ -600,13 +587,26 @@ class _DriverTile extends StatelessWidget {
           border: Border.all(color: Colors.black12),
           borderRadius: BorderRadius.circular(14),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Row(
           children: [
             Icon(icon, size: 30),
-            const SizedBox(height: 8),
-            Text(title, style: const TextStyle(fontWeight: FontWeight.w900)),
-            Text(subtitle, style: const TextStyle(fontSize: 11)),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: const TextStyle(fontWeight: FontWeight.w900)),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 11),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right),
           ],
         ),
       ),
@@ -629,21 +629,24 @@ class _SectionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 19,
-                    fontWeight: FontWeight.w900,
+                Expanded(
+                  child: Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w900),
                   ),
                 ),
-                if (trailing != null) trailing!,
+                if (trailing != null) ...[
+                  const SizedBox(width: 8),
+                  Flexible(child: trailing!),
+                ],
               ],
             ),
             const SizedBox(height: 14),
@@ -714,6 +717,7 @@ class _DriverSearchPage extends StatelessWidget {
             child: Column(
               children: [
                 ListTile(
+                  contentPadding: EdgeInsets.zero,
                   leading: Icon(Icons.memory),
                   title: Text('ABC FLOW-X100'),
                   subtitle: Text('v1.0.0 • Function 03 • 98% match'),
@@ -721,6 +725,7 @@ class _DriverSearchPage extends StatelessWidget {
                 ),
                 Divider(),
                 ListTile(
+                  contentPadding: EdgeInsets.zero,
                   leading: Icon(Icons.memory),
                   title: Text('ABC FLOW-X100 Legacy'),
                   subtitle: Text('v0.9.2 • Function 03 • 84% match'),
@@ -730,24 +735,27 @@ class _DriverSearchPage extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 14),
-          FilledButton.icon(
-            onPressed: () => showDialog<void>(
-              context: context,
-              builder: (c) => AlertDialog(
-                title: const Text('INSTALL DRIVER'),
-                content: const Text(
-                  'Driver installation will send the selected driver configuration to the valve node when the node/backend transport is connected.',
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(c),
-                    child: const Text('OK'),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: () => showDialog<void>(
+                context: context,
+                builder: (c) => AlertDialog(
+                  title: const Text('INSTALL DRIVER'),
+                  content: const Text(
+                    'Driver installation will send the selected driver configuration to the valve node when the node/backend transport is connected.',
                   ),
-                ],
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(c),
+                      child: const Text('OK'),
+                    ),
+                  ],
+                ),
               ),
+              icon: const Icon(Icons.download),
+              label: const Text('INSTALL DRIVER'),
             ),
-            icon: const Icon(Icons.download),
-            label: const Text('INSTALL DRIVER'),
           ),
         ],
       ),
