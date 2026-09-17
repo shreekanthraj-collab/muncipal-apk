@@ -303,7 +303,7 @@ class _MapScreenState extends State<MapScreen> {
       return Marker(
         point: LatLng(valve.latitude, valve.longitude),
         width: 110,
-        height: 72,
+        height: 80,
         child: GestureDetector(
           onTap: () => setState(() => _selectedId = valve.id),
           child: Column(
@@ -341,7 +341,7 @@ class _MapScreenState extends State<MapScreen> {
         Marker(
           point: _phoneLocation!,
           width: 70,
-          height: 58,
+          height: 72,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
