@@ -283,11 +283,13 @@ class _MapScreenState extends State<MapScreen> {
       ),
     );
 
-    idController.dispose();
-    zoneController.dispose();
-    wardController.dispose();
-    latController.dispose();
-    lngController.dispose();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      idController.dispose();
+      zoneController.dispose();
+      wardController.dispose();
+      latController.dispose();
+      lngController.dispose();
+    });
     if (!mounted || result == null) return;
 
     if (_valves.any(
@@ -300,7 +302,7 @@ class _MapScreenState extends State<MapScreen> {
 
     setState(() {
       _valves = [..._valves, result];
-      _selectedId = result.id;
+      _selectedId = null;
     });
     await _saveValves();
     if (mounted) {
@@ -432,7 +434,7 @@ class _MapScreenState extends State<MapScreen> {
         child: InkWell(
           borderRadius: BorderRadius.circular(12),
           onTap: () {
-            setState(() => _selectedId = valve.id);
+            setState(() => _selectedId = isSelected ? null : valve.id);
             _mapController.move(LatLng(valve.latitude, valve.longitude), 16);
           },
           child: Padding(
