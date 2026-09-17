@@ -303,7 +303,7 @@ class _MapScreenState extends State<MapScreen> {
       return Marker(
         point: LatLng(valve.latitude, valve.longitude),
         width: 110,
-        height: 80,
+        height: 100,
         child: GestureDetector(
           onTap: () => setState(() => _selectedId = valve.id),
           child: Column(
@@ -340,32 +340,35 @@ class _MapScreenState extends State<MapScreen> {
       markers.add(
         Marker(
           point: _phoneLocation!,
-          width: 70,
-          height: 72,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(7),
-                decoration: BoxDecoration(
-                  color: Colors.blue,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 3),
+          width: 80,
+          height: 100,
+          child: FittedBox(
+            fit: BoxFit.contain,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(7),
+                  decoration: BoxDecoration(
+                    color: Colors.blue,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 3),
+                  ),
+                  child: const Icon(
+                    Icons.my_location,
+                    color: Colors.white,
+                    size: 20,
+                  ),
                 ),
-                child: const Icon(
-                  Icons.my_location,
-                  color: Colors.white,
-                  size: 20,
+                const Text(
+                  'You',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    backgroundColor: Colors.white,
+                  ),
                 ),
-              ),
-              const Text(
-                'You',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  backgroundColor: Colors.white,
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       );
