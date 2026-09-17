@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'valve_command.dart';
 import 'rs485_modbus_page.dart';
 
 void main() => runApp(const OrbiValveApp());
