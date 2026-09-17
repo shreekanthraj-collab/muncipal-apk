@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'valve_command.dart';
+import 'rs485_modbus_page.dart';
 
 void main() => runApp(const OrbiValveApp());
 
@@ -95,7 +96,7 @@ class _HomeShellState extends State<HomeShell> {
     ValveDetailsPage(),
     MapPage(),
     SchedulePage(),
-    Rs485DevicesPage(),
+    Rs485ModbusPage(),
     CandidateDriversPage(),
     DriverInstallPage(),
   ];
@@ -181,4 +182,3 @@ class ActionButton extends StatelessWidget { final String text; final IconData i
 class GridFields extends StatelessWidget { final Map<String,String> fields; const GridFields({super.key,required this.fields}); @override Widget build(BuildContext c)=>Wrap(spacing:10,runSpacing:10,children:fields.entries.map((e)=>SizedBox(width: (MediaQuery.sizeOf(c).width-75)/2, child:Container(padding:const EdgeInsets.all(12),decoration:BoxDecoration(color:const Color(0xfff7f9fb),borderRadius:BorderRadius.circular(12)),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text(e.key.toUpperCase(),style:const TextStyle(fontSize:10,color:Colors.grey,fontWeight:FontWeight.w800)),const SizedBox(height:4),Text(e.value,style:const TextStyle(fontWeight:FontWeight.w800))])))).toList()); }
 class DeviceCard extends StatelessWidget { final String name; final Map<String,String> fields; final bool newDevice; const DeviceCard({super.key,required this.name,required this.fields,this.newDevice=false}); @override Widget build(BuildContext c)=>Container(padding:const EdgeInsets.all(15),decoration:BoxDecoration(border:Border.all(color:Colors.black12),borderRadius:BorderRadius.circular(15)),child:Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[Text(name,style:const TextStyle(fontWeight:FontWeight.w900,fontSize:16)),const SizedBox(height:10),GridFields(fields:fields)])); }
 class DriverCard extends StatelessWidget { final String name,id,version,match; const DriverCard({super.key,required this.name,required this.id,required this.version,required this.match}); @override Widget build(BuildContext c)=>Card(child:Padding(padding:const EdgeInsets.all(16),child:Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[Row(mainAxisAlignment:MainAxisAlignment.spaceBetween,children:[Text(name,style:const TextStyle(fontWeight:FontWeight.w900,fontSize:16)),Chip(label:Text('MATCH $match'))]),Text('$id • v$version',style:const TextStyle(color:Colors.grey)),const SizedBox(height:10),GridFields(fields:const {'Function':'03','Telemetry':'2 values'}),const SizedBox(height:10),ActionButton('SELECT',Icons.check_circle,filled:true)]))); }
-""
