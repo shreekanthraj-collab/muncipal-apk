@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../models/valve_command.dart';
 import '../models/valve_data.dart';
 import '../services/aws_service.dart';
+import '../services/valve_storage.dart';
 
 class ValveViewScreen extends StatefulWidget {
   final bool isLora;
@@ -17,12 +18,12 @@ class ValveViewScreen extends StatefulWidget {
 }
 
 class _ValveViewScreenState extends State<ValveViewScreen> {
-  static const valveIds = <String>['GSM-001', 'GSM-002', 'LORA-001', 'LORA-002'];
+  List<String> valveIds = const [];
   static const mqttHost = String.fromEnvironment('MQTT_HOST', defaultValue: '');
 
   late final AwsService mqtt;
   StreamSubscription<ValveData>? statusSubscription;
-  String selectedValveId = 'GSM-001';
+  String? selectedValveId;
   int selectedPosition = 0;
   String status = 'STOPPED';
   String calibration = 'IDLE';
@@ -34,9 +35,21 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
   @override
   void initState() {
     super.initState();
-    mqtt = AwsService(host: mqttHost, clientId: 'ORBI-APP', valveId: selectedValveId);
+    mqtt = AwsService(host: mqttHost, clientId: 'ORBI-APP', valveId: '');
     statusSubscription = mqtt.valveStatusStream.listen(_applyStatus);
+    unawaited(_loadValveIds());
     if (mqttHost.isNotEmpty) unawaited(_connect());
+  }
+
+  Future<void> _loadValveIds() async {
+    final ids = await ValveStorage.loadValveIds();
+    if (!mounted) return;
+    setState(() {
+      valveIds = ids;
+      if (selectedValveId == null || !ids.contains(selectedValveId)) {
+        selectedValveId = ids.isEmpty ? null : ids.first;
+      }
+    });
   }
 
   Future<void> _connect() async {
@@ -61,7 +74,7 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
     Map<String, int>? fields,
   }) async {
     final packet = ValveCommand(
-      valveId: selectedValveId,
+      valveId: selectedValveId ?? '',
       command: command,
       value: value,
       year: fields?['year'],
@@ -131,7 +144,17 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
           Card(child: Padding(padding: const EdgeInsets.all(14), child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             const Text('VALVE ID', style: TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 6),
-            DropdownButtonFormField<String>(initialValue: selectedValveId, decoration: const InputDecoration(border: OutlineInputBorder()), items: valveIds.map((id) => DropdownMenuItem(value: id, child: Text(id))).toList(), onChanged: chooseValve),
+            DropdownButtonFormField<String>(
+              initialValue: selectedValveId,
+              decoration: const InputDecoration(border: OutlineInputBorder()),
+              hint: const Text('Select a valve saved on MAP'),
+              items: valveIds.map((id) => DropdownMenuItem(value: id, child: Text(id))).toList(),
+              onChanged: valveIds.isEmpty ? null : chooseValve,
+            ),
+            if (valveIds.isEmpty) ...[
+              const SizedBox(height: 8),
+              const Text('No valves saved on MAP. Add the valve from MAP VIEW first.'),
+            ],
             const SizedBox(height: 12),
             Row(children: [const Expanded(child: Text('FW VERSION', style: TextStyle(fontWeight: FontWeight.bold))), Text(widget.isLora ? 'LoRa FW 1.0.0' : 'GSM FW 1.0.0')]),
           ]))),
