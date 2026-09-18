@@ -129,8 +129,6 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
         padding: const EdgeInsets.fromLTRB(12, 10, 12, 24),
         children: [
           Card(child: Padding(padding: const EdgeInsets.all(14), child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            Row(children: [const Expanded(child: Text('ADD NEW VALVE', style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold))), FilledButton.icon(onPressed: _addValve, icon: const Icon(Icons.add), label: const Text('ADD VALVE'))]),
-            const SizedBox(height: 12),
             const Text('VALVE ID', style: TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 6),
             DropdownButtonFormField<String>(initialValue: selectedValveId, decoration: const InputDecoration(border: OutlineInputBorder()), items: valveIds.map((id) => DropdownMenuItem(value: id, child: Text(id))).toList(), onChanged: chooseValve),
@@ -280,8 +278,4 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
   Widget _card(String title, Widget child) => Card(child: Padding(padding: const EdgeInsets.all(14), child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)), const SizedBox(height: 10), child])));
 
   Widget _small(String text, Future<void> Function() onPressed) => SizedBox(height: 46, child: OutlinedButton(onPressed: () => onPressed(), child: Text(text)));
-
-  void _addValve() {
-    showDialog<void>(context: context, builder: (context) => AlertDialog(title: const Text('ADD NEW VALVE'), content: const Text('New GSM and LoRa valves are registered through the device provisioning flow. The combined Valve ID list is used on this page.'), actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('OK'))]));
-  }
 }
