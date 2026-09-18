@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../services/valve_storage.dart';
+
 class Rs485Screen extends StatefulWidget {
   const Rs485Screen({super.key});
 
@@ -9,8 +11,8 @@ class Rs485Screen extends StatefulWidget {
 }
 
 class _Rs485ScreenState extends State<Rs485Screen> {
-  static const valveIds = ['GSM-001', 'GSM-002', 'LORA-001', 'LORA-002'];
-  String selectedValveId = valveIds.first;
+  List<String> valveIds = const [];
+  String? selectedValveId;
   bool sensor1Added = true;
   bool sensor2Added = true;
   bool overflowAdded = true;
@@ -57,6 +59,7 @@ class _Rs485ScreenState extends State<Rs485Screen> {
                     decoration: const InputDecoration(
                       border: OutlineInputBorder(),
                     ),
+                    hint: const Text('Select a valve saved on MAP'),
                     items: valveIds
                         .map(
                           (id) => DropdownMenuItem<String>(
@@ -65,16 +68,20 @@ class _Rs485ScreenState extends State<Rs485Screen> {
                           ),
                         )
                         .toList(),
-                    onChanged: (v) {
-                      if (v != null) setState(() => selectedValveId = v);
-                    },
+                    onChanged: valveIds.isEmpty
+                        ? null
+                        : (v) {
+                            if (v != null) {
+                              setState(() => selectedValveId = v);
+                            }
+                          },
                   ),
-                  const SizedBox(height: 12),
-                  FilledButton.icon(
-                    onPressed: () => _info('ADD VALVE'),
-                    icon: const Icon(Icons.add),
-                    label: const Text('ADD VALVE'),
-                  ),
+                  if (valveIds.isEmpty) ...[
+                    const SizedBox(height: 8),
+                    const Text(
+                      'No valves saved on MAP. Add the valve from MAP VIEW first.',
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -180,7 +187,4 @@ class _Rs485ScreenState extends State<Rs485Screen> {
         ),
       );
 
-  void _info(String title) => ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('$title for $selectedValveId')),
-      );
 }
