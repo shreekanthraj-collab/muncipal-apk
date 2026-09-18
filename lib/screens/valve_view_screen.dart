@@ -19,6 +19,7 @@ class ValveViewScreen extends StatefulWidget {
 
 class _ValveViewScreenState extends State<ValveViewScreen> {
   List<String> valveIds = const [];
+  Map<String, Map<String, String>> valveDetails = const {};
   static const mqttHost = String.fromEnvironment('MQTT_HOST', defaultValue: '');
 
   late final AwsService mqtt;
@@ -42,9 +43,11 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
   }
 
   Future<void> _loadValveIds() async {
-    final ids = await ValveStorage.loadValveIds();
+    final details = await ValveStorage.loadValveDetails();
+    final ids = details.keys.toList();
     if (!mounted) return;
     setState(() {
+      valveDetails = details;
       valveIds = ids;
       if (selectedValveId == null || !ids.contains(selectedValveId)) {
         selectedValveId = ids.isEmpty ? null : ids.first;
@@ -142,6 +145,24 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
         padding: const EdgeInsets.fromLTRB(12, 10, 12, 24),
         children: [
           Card(child: Padding(padding: const EdgeInsets.all(14), child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            Row(
+              children: [
+                Expanded(
+                  child: _infoField(
+                    'ZONE NO',
+                    valveDetails[selectedValveId]?['zone'] ?? '--',
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _infoField(
+                    'WARD NO',
+                    valveDetails[selectedValveId]?['ward'] ?? '--',
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
             const Text('VALVE ID', style: TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 6),
             DropdownButtonFormField<String>(
@@ -171,6 +192,18 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
       ),
     );
   }
+
+  Widget _infoField(String label, String value) => InputDecorator(
+        decoration: InputDecoration(
+          labelText: label,
+          border: const OutlineInputBorder(),
+          filled: true,
+        ),
+        child: Text(
+          value.isEmpty ? '--' : value,
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+        ),
+      );
 
   Widget _gsmStatusCard() => Card(child: Padding(padding: const EdgeInsets.all(14), child: Column(children: [
     const Text('SLEEP BYPASS / ACTIVE', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
