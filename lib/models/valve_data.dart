@@ -4,6 +4,7 @@ class ValveData {
   final int requested;
   final int actual;
   final bool connected;
+  final String communicationId;
 
   const ValveData({
     required this.valveId,
@@ -11,6 +12,7 @@ class ValveData {
     required this.requested,
     required this.actual,
     required this.connected,
+    required this.communicationId,
   });
 
   factory ValveData.fromJson(Map<String, dynamic> json) {
@@ -20,6 +22,7 @@ class ValveData {
       requested: (json['requested'] ?? 0).toInt(),
       actual: (json['actual'] ?? 0).toInt(),
       connected: json['connected'] ?? false,
+      communicationId: (json['communication_id'] ?? json['device_id'] ?? json['thing_name'] ?? '').toString(),
     );
   }
 
@@ -30,6 +33,7 @@ class ValveData {
       'requested': requested,
       'actual': actual,
       'connected': connected,
+      'communication_id': communicationId,
     };
   }
 }
