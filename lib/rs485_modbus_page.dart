@@ -12,6 +12,8 @@ class Rs485ModbusPage extends StatefulWidget {
 }
 
 class _Rs485ModbusPageState extends State<Rs485ModbusPage> {
+  String zone = '1';
+  String ward = '1';
   String valve = '';
 
   bool scanning = false;
@@ -36,7 +38,7 @@ class _Rs485ModbusPageState extends State<Rs485ModbusPage> {
       DeviceOrientation.portraitUp,
       DeviceOrientation.portraitDown,
     ]);
-    _loadSelection();
+    _loadValveIds();
   }
 
   @override
@@ -161,11 +163,13 @@ class _Rs485ModbusPageState extends State<Rs485ModbusPage> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             _TopSelectionCard(
+              zone: zone,
+              ward: ward,
               valve: valve,
               valveIds: valveIds,
-              onValveChanged: (v) {
-                setState(() => valve = v);
-              },
+              onZoneChanged: (v) => setState(() => zone = v),
+              onWardChanged: (v) => setState(() => ward = v),
+              onValveChanged: (v) => setState(() => valve = v),
             ),
             const SizedBox(height: 12),
             _BusStatusCard(
@@ -252,26 +256,58 @@ class _Rs485ModbusPageState extends State<Rs485ModbusPage> {
 }
 
 class _TopSelectionCard extends StatelessWidget {
+  final String zone;
+  final String ward;
   final String valve;
   final List<String> valveIds;
+  final ValueChanged<String> onZoneChanged;
+  final ValueChanged<String> onWardChanged;
   final ValueChanged<String> onValveChanged;
 
   const _TopSelectionCard({
+    required this.zone,
+    required this.ward,
     required this.valve,
     required this.valveIds,
+    required this.onZoneChanged,
+    required this.onWardChanged,
     required this.onValveChanged,
   });
 
   @override
   Widget build(BuildContext context) {
+    final numbers = List<String>.generate(100, (i) => '${i + 1}');
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            Row(
+              children: [
+                Expanded(
+                  child: _DropdownField(
+                    label: 'ZONE NO',
+                    value: zone,
+                    values: numbers,
+                    onChanged: onZoneChanged,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _DropdownField(
+                    label: 'WARD NO',
+                    value: ward,
+                    values: numbers,
+                    onChanged: onWardChanged,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
             _DropdownField(
-              label: 'VALVE ID (GSM + LoRa)',
+              label: 'VALVE ID (ZONE + GSM + LoRa)',
               value: valve,
               values: valveIds,
               onChanged: onValveChanged,
@@ -288,7 +324,6 @@ class _TopSelectionCard extends StatelessWidget {
     );
   }
 }
-
 class _DropdownField extends StatelessWidget {
   final String label;
   final String value;
@@ -305,7 +340,7 @@ class _DropdownField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DropdownButtonFormField<String>(
-      initialValue: values.contains(value) ? value : values.first,
+      initialValue: values.contains(value) ? value : null,
       isExpanded: true,
       decoration: InputDecoration(
         labelText: label,
