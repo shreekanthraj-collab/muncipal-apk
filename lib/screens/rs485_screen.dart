@@ -52,10 +52,8 @@ class _Rs485ScreenState extends State<Rs485Screen> {
     setState(() {
       valveDetails = details;
       valveIds = ids;
-
-      if (selectedValveId != null &&
-          !valveIds.contains(selectedValveId)) {
-        selectedValveId = null;
+      if (selectedValveId == null || !ids.contains(selectedValveId)) {
+        selectedValveId = ids.isEmpty ? null : ids.first;
       }
     });
   }
@@ -95,9 +93,10 @@ class _Rs485ScreenState extends State<Rs485Screen> {
                     'VALVE ID',
                     style: TextStyle(fontWeight: FontWeight.bold),
                   ),
-                  const SizedBox(height: 7),
+                  const SizedBox(height: 6),
                   DropdownButtonFormField<String>(
                     initialValue: selectedValveId,
+                    isExpanded: true,
                     decoration: const InputDecoration(
                       border: OutlineInputBorder(),
                     ),
@@ -219,19 +218,14 @@ class _Rs485ScreenState extends State<Rs485Screen> {
   }
 
   Widget _infoField(String label, String value) => InputDecorator(
-        decoration: const InputDecoration(
-          border: OutlineInputBorder(),
+        decoration: InputDecoration(
+          labelText: label,
+          border: const OutlineInputBorder(),
+          filled: true,
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(label, style: const TextStyle(fontSize: 12)),
-            const SizedBox(height: 4),
-            Text(
-              value.isEmpty ? '--' : value,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-            ),
-          ],
+        child: Text(
+          value.isEmpty ? '--' : value,
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
         ),
       );
 
