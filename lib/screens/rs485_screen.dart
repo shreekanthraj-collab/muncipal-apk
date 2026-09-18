@@ -37,6 +37,27 @@ class _Rs485ScreenState extends State<Rs485Screen> {
   void removeSensor() => setState(() => sensor2Added = false);
 
   @override
+  void initState() {
+    super.initState();
+    _loadValveIds();
+  }
+
+  Future<void> _loadValveIds() async {
+    final ids = await ValveStorage.loadValveIds();
+
+    if (!mounted) return;
+
+    setState(() {
+      valveIds = ids;
+
+      if (selectedValveId != null &&
+          !valveIds.contains(selectedValveId)) {
+        selectedValveId = null;
+      }
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('RS485 / MODBUS'), centerTitle: true),
@@ -50,7 +71,7 @@ class _Rs485ScreenState extends State<Rs485Screen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   const Text(
-                    'VALVE ID (GSM + LoRa)',
+                    'VALVE ID',
                     style: TextStyle(fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 7),
