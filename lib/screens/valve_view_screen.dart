@@ -268,16 +268,12 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
     Slider(value: ocReset, min: 0.5, max: 20, divisions: 39, onChanged: (v) => setState(() => ocReset = v)),
   ]));
 
-  Widget _scheduleCard() => _card('SCHEDULING / CLOCK', Column(children: [
+  Widget _scheduleCard() => _card('SCHEDULING', Column(children: [
     Row(children: [Expanded(child: _small('VIEW SCHEDULE', () => send('GET_SCHEDULE'))), const SizedBox(width: 8), Expanded(child: _small('START', () => send('SCHEDULE_START')))]),
     const SizedBox(height: 8),
     Row(children: [Expanded(child: _small('SET SCHEDULE', _setSchedule)), const SizedBox(width: 8), Expanded(child: _small('CANCEL ALL', () => send('CLR_SCHEDULE')))]),
-    const Divider(height: 22),
-    Row(children: [Expanded(child: _small('CLOCK VIEW', () => send('CLOCK_VIEW'))), const SizedBox(width: 8), Expanded(child: _small('START TIME', () => send('START_TIME')))]),
     const SizedBox(height: 8),
-    Row(children: [Expanded(child: _small('STOP TIME', () => send('STOP_TIME'))), const SizedBox(width: 8), Expanded(child: _small('DATE SET', _setClock))]),
-    const SizedBox(height: 8),
-    SizedBox(width: double.infinity, child: OutlinedButton(onPressed: () => send('WEEK'), child: const Text('WEEK'))),
+    SizedBox(width: double.infinity, child: OutlinedButton(onPressed: _setClock, child: const Text('DATE SET'))),
   ]));
 
   Future<void> _setClock() async {
