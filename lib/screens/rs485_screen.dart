@@ -12,6 +12,7 @@ class Rs485Screen extends StatefulWidget {
 
 class _Rs485ScreenState extends State<Rs485Screen> {
   List<String> valveIds = const [];
+  Map<String, Map<String, String>> valveDetails = const {};
   String? selectedValveId;
   bool sensor1Added = true;
   bool sensor2Added = true;
@@ -43,11 +44,13 @@ class _Rs485ScreenState extends State<Rs485Screen> {
   }
 
   Future<void> _loadValveIds() async {
-    final ids = await ValveStorage.loadValveIds();
+    final details = await ValveStorage.loadValveDetails();
+    final ids = details.keys.toList();
 
     if (!mounted) return;
 
     setState(() {
+      valveDetails = details;
       valveIds = ids;
 
       if (selectedValveId != null &&
@@ -70,6 +73,24 @@ class _Rs485ScreenState extends State<Rs485Screen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _infoField(
+                          'ZONE NO',
+                          valveDetails[selectedValveId]?['zone'] ?? '--',
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: _infoField(
+                          'WARD NO',
+                          valveDetails[selectedValveId]?['ward'] ?? '--',
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
                   const Text(
                     'VALVE ID',
                     style: TextStyle(fontWeight: FontWeight.bold),
@@ -196,6 +217,23 @@ class _Rs485ScreenState extends State<Rs485Screen> {
       ),
     );
   }
+
+  Widget _infoField(String label, String value) => InputDecorator(
+        decoration: const InputDecoration(
+          border: OutlineInputBorder(),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(label, style: const TextStyle(fontSize: 12)),
+            const SizedBox(height: 4),
+            Text(
+              value.isEmpty ? '--' : value,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+            ),
+          ],
+        ),
+      );
 
   Widget _sensorCard(String title, String value, IconData icon) => Card(
         child: ListTile(
