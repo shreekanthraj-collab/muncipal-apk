@@ -287,7 +287,7 @@ class _TopSelectionCard extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             _DropdownField(
-              label: 'VALVE ID',
+              label: 'VALVE ID (MAP SAVED)',
               value: valve,
               values: valveIds,
               onChanged: onValveChanged,
