@@ -6,6 +6,8 @@ import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../services/valve_fault_storage.dart';
+
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
 
@@ -64,6 +66,7 @@ class _MapScreenState extends State<MapScreen> {
   String? _selectedId;
   bool _loading = true;
   bool _locating = false;
+  final Map<String, bool> _ocFaults = {};
   String _locationStatus = 'Phone GPS not active';
 
   static const LatLng _defaultCenter = LatLng(20.5937, 78.9629);
@@ -79,6 +82,13 @@ class _MapScreenState extends State<MapScreen> {
   void dispose() {
     _mapNameController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadFaults() async {
+    for (final valve in _valves) {
+      _ocFaults[valve.id] = await ValveFaultStorage.load(valve.id);
+    }
+    if (mounted) setState(() {});
   }
 
   Future<void> _loadValves() async {
@@ -350,7 +360,7 @@ class _MapScreenState extends State<MapScreen> {
               Icon(
                 Icons.location_on,
                 size: 40,
-                color: valve.isGsm ? Colors.red : Colors.blue,
+                color: _ocFaults[valve.id] == true ? Colors.red : (valve.isGsm ? Colors.red : Colors.blue),
               ),
               Container(
                 padding:
@@ -446,14 +456,14 @@ class _MapScreenState extends State<MapScreen> {
                   width: 42,
                   height: 42,
                   decoration: BoxDecoration(
-                    color: valve.isGsm
+                    color: _ocFaults[valve.id] == true
                         ? Colors.red.withValues(alpha: 0.10)
-                        : Colors.blue.withValues(alpha: 0.10),
+                        : (valve.isGsm ? Colors.red.withValues(alpha: 0.10) : Colors.blue.withValues(alpha: 0.10)),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Icon(
                     Icons.water_damage_outlined,
-                    color: valve.isGsm ? Colors.red : Colors.blue,
+                    color: _ocFaults[valve.id] == true ? Colors.red : (valve.isGsm ? Colors.red : Colors.blue),
                     size: 25,
                   ),
                 ),
