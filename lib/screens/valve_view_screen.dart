@@ -34,6 +34,7 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
   double ocTrip = 5.0;
   double ocReset = 6.0;
   String communicationId = '';
+  bool ocFault = false;
 
   @override
   void initState() {
@@ -71,6 +72,7 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
       status = data.status;
       selectedPosition = data.actual.clamp(0, 100).toInt();
       communicationId = data.connected ? data.communicationId : '';
+      ocFault = data.ocFault;
       unawaited(ValveFaultStorage.save(data.valveId, data.ocFault));
     });
   }
@@ -207,7 +209,7 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
     );
   }
 
-  bool get _currentValveHasOcFault => status.toUpperCase().contains('OC TRIP') || status.toUpperCase().contains('OVERCURRENT');
+  bool get _currentValveHasOcFault => ocFault || status.toUpperCase().contains('OC TRIP') || status.toUpperCase().contains('OVERCURRENT');
 
   Widget _ocFaultBanner() => Card(
         color: Colors.red.shade50,
