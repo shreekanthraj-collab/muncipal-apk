@@ -146,6 +146,7 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
             const SizedBox(height: 6),
             DropdownButtonFormField<String>(
               initialValue: selectedValveId,
+              isExpanded: true,
               decoration: const InputDecoration(border: OutlineInputBorder()),
               hint: const Text('Select a valve saved on MAP'),
               items: valveIds.map((id) => DropdownMenuItem(value: id, child: Text(id))).toList(),
