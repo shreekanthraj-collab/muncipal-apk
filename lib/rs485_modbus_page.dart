@@ -12,9 +12,8 @@ class Rs485ModbusPage extends StatefulWidget {
 }
 
 class _Rs485ModbusPageState extends State<Rs485ModbusPage> {
-  String zone = '1';
-  String ward = '1';
   String valve = '';
+  Map<String, Map<String, String>> valveDetails = const {};
 
   bool scanning = false;
   DateTime? lastScan;
@@ -51,9 +50,11 @@ class _Rs485ModbusPageState extends State<Rs485ModbusPage> {
   }
 
   Future<void> _loadValveIds() async {
-    final ids = await ValveStorage.loadValveIds();
+    final details = await ValveStorage.loadValveDetails();
+    final ids = details.keys.toList();
     if (!mounted) return;
     setState(() {
+      valveDetails = details;
       valveIds = ids;
       valve = ids.isEmpty ? '' : (ids.contains(valve) ? valve : ids.first);
     });
@@ -163,12 +164,9 @@ class _Rs485ModbusPageState extends State<Rs485ModbusPage> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             _TopSelectionCard(
-              zone: zone,
-              ward: ward,
               valve: valve,
               valveIds: valveIds,
-              onZoneChanged: (v) => setState(() => zone = v),
-              onWardChanged: (v) => setState(() => ward = v),
+              valveDetails: valveDetails,
               onValveChanged: (v) => setState(() => valve = v),
             ),
             const SizedBox(height: 12),
@@ -256,27 +254,23 @@ class _Rs485ModbusPageState extends State<Rs485ModbusPage> {
 }
 
 class _TopSelectionCard extends StatelessWidget {
-  final String zone;
-  final String ward;
   final String valve;
   final List<String> valveIds;
-  final ValueChanged<String> onZoneChanged;
-  final ValueChanged<String> onWardChanged;
+  final Map<String, Map<String, String>> valveDetails;
   final ValueChanged<String> onValveChanged;
 
   const _TopSelectionCard({
-    required this.zone,
-    required this.ward,
     required this.valve,
     required this.valveIds,
-    required this.onZoneChanged,
-    required this.onWardChanged,
+    required this.valveDetails,
     required this.onValveChanged,
   });
 
   @override
   Widget build(BuildContext context) {
-    final numbers = List<String>.generate(100, (i) => '${i + 1}');
+    final details = valveDetails[valve];
+    final zone = details?['zone'] ?? '--';
+    final ward = details?['ward'] ?? '--';
 
     return Card(
       child: Padding(
@@ -286,28 +280,14 @@ class _TopSelectionCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                Expanded(
-                  child: _DropdownField(
-                    label: 'ZONE NO',
-                    value: zone,
-                    values: numbers,
-                    onChanged: onZoneChanged,
-                  ),
-                ),
+                Expanded(child: _InfoField(label: 'ZONE NO', value: zone)),
                 const SizedBox(width: 10),
-                Expanded(
-                  child: _DropdownField(
-                    label: 'WARD NO',
-                    value: ward,
-                    values: numbers,
-                    onChanged: onWardChanged,
-                  ),
-                ),
+                Expanded(child: _InfoField(label: 'WARD NO', value: ward)),
               ],
             ),
             const SizedBox(height: 12),
             _DropdownField(
-              label: 'VALVE ID (ZONE + GSM + LoRa)',
+              label: 'VALVE ID',
               value: valve,
               values: valveIds,
               onChanged: onValveChanged,
@@ -324,6 +304,29 @@ class _TopSelectionCard extends StatelessWidget {
     );
   }
 }
+
+class _InfoField extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _InfoField({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return InputDecorator(
+      decoration: InputDecoration(
+        labelText: label,
+        border: const OutlineInputBorder(),
+        filled: true,
+      ),
+      child: Text(
+        value.isEmpty ? '--' : value,
+        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+      ),
+    );
+  }
+}
+
 class _DropdownField extends StatelessWidget {
   final String label;
   final String value;
