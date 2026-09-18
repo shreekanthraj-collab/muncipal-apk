@@ -195,8 +195,10 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
           _voltageCard(),
           _currentCard(),
           _scheduleCard(),
-          const SizedBox(height: 10),
-          SizedBox(height: 54, child: FilledButton.tonal(onPressed: rebindOwner, style: FilledButton.styleFrom(foregroundColor: Colors.deepPurple), child: const Text('OWNER REBIND', style: TextStyle(fontWeight: FontWeight.bold)))),
+          if (widget.isLora) ...[
+            const SizedBox(height: 10),
+            SizedBox(height: 54, child: FilledButton.tonal(onPressed: rebindOwner, style: FilledButton.styleFrom(foregroundColor: Colors.deepPurple), child: const Text('OWNER REBIND / GW REBIND', style: TextStyle(fontWeight: FontWeight.bold)))),
+          ],
         ],
       ),
     );
