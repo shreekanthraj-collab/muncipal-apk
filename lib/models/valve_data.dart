@@ -5,6 +5,7 @@ class ValveData {
   final int actual;
   final bool connected;
   final String communicationId;
+  final bool ocFault;
 
   const ValveData({
     required this.valveId,
@@ -13,6 +14,7 @@ class ValveData {
     required this.actual,
     required this.connected,
     required this.communicationId,
+    required this.ocFault,
   });
 
   factory ValveData.fromJson(Map<String, dynamic> json) {
@@ -23,6 +25,7 @@ class ValveData {
       actual: (json['actual'] ?? 0).toInt(),
       connected: json['connected'] ?? false,
       communicationId: (json['communication_id'] ?? json['device_id'] ?? json['thing_name'] ?? '').toString(),
+      ocFault: _hasOcFault(json),
     );
   }
 
@@ -34,6 +37,7 @@ class ValveData {
       'actual': actual,
       'connected': connected,
       'communication_id': communicationId,
+      'oc_fault': ocFault,
     };
   }
 }
