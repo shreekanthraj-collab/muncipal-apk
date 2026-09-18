@@ -32,6 +32,7 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
   double voltageThreshold = 11.50;
   double ocTrip = 5.0;
   double ocReset = 6.0;
+  String communicationId = '';
 
   @override
   void initState() {
@@ -68,6 +69,7 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
     setState(() {
       status = data.status;
       selectedPosition = data.actual.clamp(0, 100).toInt();
+      communicationId = data.connected ? data.communicationId : '';
     });
   }
 
@@ -176,6 +178,13 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
             if (valveIds.isEmpty) ...[
               const SizedBox(height: 8),
               const Text('No valves saved on MAP. Add the valve from MAP VIEW first.'),
+            ],
+            if (!widget.isLora) ...[
+              const SizedBox(height: 12),
+              _infoField(
+                'AWS COMMUNICATION ID',
+                communicationId.isEmpty ? '--' : communicationId,
+              ),
             ],
             const SizedBox(height: 12),
             Row(children: [const Expanded(child: Text('FW VERSION', style: TextStyle(fontWeight: FontWeight.bold))), Text(widget.isLora ? 'LoRa FW 1.0.0' : 'GSM FW 1.0.0')]),
