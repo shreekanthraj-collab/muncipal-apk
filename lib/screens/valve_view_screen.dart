@@ -7,6 +7,7 @@ import '../models/valve_command.dart';
 import '../models/valve_data.dart';
 import '../services/aws_service.dart';
 import '../services/valve_storage.dart';
+import '../services/valve_fault_storage.dart';
 
 class ValveViewScreen extends StatefulWidget {
   final bool isLora;
@@ -70,6 +71,7 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
       status = data.status;
       selectedPosition = data.actual.clamp(0, 100).toInt();
       communicationId = data.connected ? data.communicationId : '';
+      unawaited(ValveFaultStorage.save(data.valveId, data.ocFault));
     });
   }
 
@@ -190,6 +192,7 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
             Row(children: [const Expanded(child: Text('FW VERSION', style: TextStyle(fontWeight: FontWeight.bold))), Text(widget.isLora ? 'LoRa FW 1.0.0' : 'GSM FW 1.0.0')]),
           ]))),
           if (!widget.isLora) _gsmStatusCard() else _loraStatusCard(),
+          if (_currentValveHasOcFault) _ocFaultBanner(),
           _positionCard(),
           _calibrationCard(),
           _voltageCard(),
@@ -203,6 +206,20 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
       ),
     );
   }
+
+  bool get _currentValveHasOcFault => status.toUpperCase().contains('OC TRIP') || status.toUpperCase().contains('OVERCURRENT');
+
+  Widget _ocFaultBanner() => Card(
+        color: Colors.red.shade50,
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(children: [
+            Container(width: 18, height: 18, decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle)),
+            const SizedBox(width: 10),
+            const Expanded(child: Text('OC TRIP / OVER-CURRENT FAULT', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold))),
+          ]),
+        ),
+      );
 
   Widget _infoField(String label, String value) => InputDecorator(
         decoration: InputDecoration(
