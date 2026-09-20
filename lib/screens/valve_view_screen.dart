@@ -35,6 +35,7 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
   double ocReset = 6.0;
   String communicationId = '';
   bool ocFault = false;
+  bool lowVoltageBypass = false;
 
   @override
   void initState() {
@@ -73,6 +74,7 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
       selectedPosition = data.actual.clamp(0, 100).toInt();
       communicationId = data.connected ? data.communicationId : '';
       ocFault = data.ocFault;
+      lowVoltageBypass = data.lowVoltageBypass;
       unawaited(ValveFaultStorage.save(data.valveId, data.ocFault));
     });
   }
@@ -195,6 +197,7 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
           ]))),
           if (!widget.isLora) _gsmStatusCard() else _loraStatusCard(),
           if (_currentValveHasOcFault) _ocFaultBanner(),
+          if (lowVoltageBypass) _voltageBypassBanner(),
           _positionCard(),
           _calibrationCard(),
           _voltageCard(),
@@ -219,6 +222,18 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
             Container(width: 18, height: 18, decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle)),
             const SizedBox(width: 10),
             const Expanded(child: Text('OC TRIP / OVER-CURRENT FAULT', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold))),
+          ]),
+        ),
+      );
+
+  Widget _voltageBypassBanner() => Card(
+        color: Colors.red.shade50,
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(children: [
+            Container(width: 18, height: 18, decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle)),
+            const SizedBox(width: 10),
+            const Expanded(child: Text('VOLTAGE BYPASS ACTIVE', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold))),
           ]),
         ),
       );
