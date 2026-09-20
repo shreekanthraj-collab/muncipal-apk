@@ -6,6 +6,7 @@ class ValveData {
   final bool connected;
   final String communicationId;
   final bool ocFault;
+  final bool lowVoltageBypass;
 
   const ValveData({
     required this.valveId,
@@ -15,6 +16,7 @@ class ValveData {
     required this.connected,
     required this.communicationId,
     required this.ocFault,
+    required this.lowVoltageBypass,
   });
 
   factory ValveData.fromJson(Map<String, dynamic> json) {
@@ -26,6 +28,7 @@ class ValveData {
       connected: json['connected'] ?? false,
       communicationId: (json['communication_id'] ?? json['device_id'] ?? json['thing_name'] ?? '').toString(),
       ocFault: _hasOcFault(json),
+      lowVoltageBypass: _hasLowVoltageBypass(json),
     );
   }
 
@@ -38,7 +41,21 @@ class ValveData {
       'connected': connected,
       'communication_id': communicationId,
       'oc_fault': ocFault,
+      'low_voltage_bypass': lowVoltageBypass,
     };
+  }
+
+  static bool _hasLowVoltageBypass(Map<String, dynamic> json) {
+    final direct = json['low_voltage_bypass'] ?? json['lowVoltageBypass'];
+    if (direct is bool) return direct;
+    if (direct is num) return direct != 0;
+    final faults = json['faults'];
+    if (faults is Map) {
+      final value = faults['low_voltage_bypass'] ?? faults['lowVoltageBypass'];
+      if (value is bool) return value;
+      if (value is num) return value != 0;
+    }
+    return false;
   }
 
   static bool _hasOcFault(Map<String, dynamic> json) {
