@@ -198,6 +198,7 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
           if (!widget.isLora) _gsmStatusCard() else _loraStatusCard(),
           if (_currentValveHasOcFault) _ocFaultBanner(),
           if (lowVoltageBypass) _voltageBypassBanner(),
+          _testFaultCard(),
           _positionCard(),
           _calibrationCard(),
           _voltageCard(),
@@ -213,6 +214,63 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
   }
 
   bool get _currentValveHasOcFault => ocFault || status.toUpperCase().contains('OC TRIP') || status.toUpperCase().contains('OVERCURRENT');
+
+  Widget _testFaultCard() => Card(
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text(
+                'FAULT / BYPASS TEST',
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => setState(() {
+                        ocFault = true;
+                        status = 'OC TRIP';
+                      }),
+                      child: const Text('TEST OC TRIP'),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => setState(() {
+                        ocFault = false;
+                        status = 'STOPPED';
+                      }),
+                      child: const Text('CLEAR OC'),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => setState(() => lowVoltageBypass = true),
+                      child: const Text('TEST LOW VOLTAGE'),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => setState(() => lowVoltageBypass = false),
+                      child: const Text('CANCEL BYPASS'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      );
 
   Widget _ocFaultBanner() => Card(
         color: Colors.red.shade50,
