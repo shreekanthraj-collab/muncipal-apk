@@ -469,6 +469,33 @@ class _ValveDetailScreenState extends State<ValveDetailScreen> {
                   children: [
                     const Text('STATUS', style: TextStyle(fontWeight: FontWeight.bold)),
                     const SizedBox(height: 6),
+                    if (valveData.ocFault)
+                      Container(
+                        width: double.infinity,
+                        margin: const EdgeInsets.only(bottom: 10),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.red.shade50,
+                          border: Border.all(color: Colors.red, width: 2),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Row(
+                          children: [
+                            Icon(Icons.warning_rounded, color: Colors.red),
+                            SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                'OC TRIP',
+                                style: TextStyle(
+                                  color: Colors.red,
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     Text(status, style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: statusColor())),
                     Text('Requested: $requestedPosition%   Actual: $actualPosition%'),
                     const SizedBox(height: 8),
