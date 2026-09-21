@@ -178,6 +178,39 @@ class _ValveDetailScreenState extends State<ValveDetailScreen> {
     await _sendCommand('VOLTAGE_BYPASS_CANCEL');
   }
 
+  void previewOcTrip() {
+    setState(() {
+      valveData = ValveData(
+        valveId: valveData.valveId,
+        status: 'OC TRIP',
+        requested: valveData.requested,
+        actual: valveData.actual,
+        connected: valveData.connected,
+        communicationId: valveData.communicationId,
+        ocFault: true,
+        lowVoltageBypass: valveData.lowVoltageBypass,
+      );
+      status = 'OC TRIP';
+    });
+  }
+
+  void clearPreviewFaults() {
+    setState(() {
+      valveData = ValveData(
+        valveId: valveData.valveId,
+        status: 'STOPPED',
+        requested: valveData.requested,
+        actual: valveData.actual,
+        connected: valveData.connected,
+        communicationId: valveData.communicationId,
+        ocFault: false,
+        lowVoltageBypass: false,
+      );
+      status = 'STOPPED';
+      voltageBypass = false;
+    });
+  }
+
   Future<void> showScheduleDialog() async {
     final start = TextEditingController(text: '06:00');
     final stop = TextEditingController(text: '18:00');
@@ -556,6 +589,24 @@ class _ValveDetailScreenState extends State<ValveDetailScreen> {
                   children: [
                     const Text('STATUS', style: TextStyle(fontWeight: FontWeight.bold)),
                     const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: previewOcTrip,
+                            child: const Text('TEST OC TRIP'),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: clearPreviewFaults,
+                            child: const Text('CLEAR TEST'),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
                     if (valveData.ocFault)
                       Container(
                         width: double.infinity,
