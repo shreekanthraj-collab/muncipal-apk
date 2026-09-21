@@ -168,6 +168,16 @@ class _ValveDetailScreenState extends State<ValveDetailScreen> {
     await _sendCommand(value ? 'VOLTAGE_BYPASS' : 'VOLTAGE_BYPASS_CANCEL');
   }
 
+  Future<void> confirmVoltageBypass() async {
+    setState(() => voltageBypass = true);
+    await _sendCommand('VOLTAGE_BYPASS');
+  }
+
+  Future<void> cancelVoltageBypass() async {
+    setState(() => voltageBypass = false);
+    await _sendCommand('VOLTAGE_BYPASS_CANCEL');
+  }
+
   Future<void> showScheduleDialog() async {
     final start = TextEditingController(text: '06:00');
     final stop = TextEditingController(text: '18:00');
@@ -379,6 +389,83 @@ class _ValveDetailScreenState extends State<ValveDetailScreen> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     const Text('VOLTAGE', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    if (valveData.lowVoltageBypass)
+                      Container(
+                        width: double.infinity,
+                        margin: const EdgeInsets.only(bottom: 10),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.orange.shade50,
+                          border: Border.all(color: Colors.orange, width: 2),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Row(
+                          children: [
+                            Icon(Icons.bolt, color: Colors.orange),
+                            SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                'LOW VOLTAGE BYPASS ACTIVE',
+                                style: TextStyle(
+                                  color: Colors.orange,
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    if (!valveData.lowVoltageBypass)
+                      Container(
+                        width: double.infinity,
+                        margin: const EdgeInsets.only(bottom: 10),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.orange.shade50,
+                          border: Border.all(color: Colors.orange, width: 2),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            const Row(
+                              children: [
+                                Icon(Icons.warning_amber_rounded, color: Colors.orange),
+                                SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    'LOW VOLTAGE — BYPASS PENDING',
+                                    style: TextStyle(
+                                      color: Colors.orange,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: OutlinedButton(
+                                    onPressed: cancelVoltageBypass,
+                                    child: const Text('CANCEL'),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: FilledButton(
+                                    onPressed: confirmVoltageBypass,
+                                    child: const Text('CONFIRM'),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
                     SwitchListTile(
                       contentPadding: EdgeInsets.zero,
                       title: const Text('Bypass'),
