@@ -388,13 +388,104 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
   ]));
 
   Future<void> _setClock() async {
-    final now = DateTime.now();
-    final date = await showDatePicker(context: context, initialDate: now, firstDate: DateTime(2020), lastDate: DateTime(2099));
-    if (date == null || !mounted) return;
-    final time = await showTimePicker(context: context, initialTime: TimeOfDay.fromDateTime(now));
-    if (time == null || !mounted) return;
-    final dt = DateTime(date.year, date.month, date.day, time.hour, time.minute);
-    await send('SET_TIME', fields: {'year': dt.year, 'month': dt.month, 'day': dt.day, 'hour': dt.hour, 'minute': dt.minute, 'second': dt.second, 'wday': dt.weekday % 7});
+    DateTime selectedDate = DateTime.now();
+    TimeOfDay startTime = TimeOfDay.fromDateTime(DateTime.now());
+    TimeOfDay stopTime = const TimeOfDay(hour: 18, minute: 0);
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('DATE SET'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Date'),
+                  subtitle: Text(
+                    '${selectedDate.year.toString().padLeft(4, '0')}-'
+                    '${selectedDate.month.toString().padLeft(2, '0')}-'
+                    '${selectedDate.day.toString().padLeft(2, '0')}',
+                  ),
+                  trailing: const Icon(Icons.calendar_today),
+                  onTap: () async {
+                    final picked = await showDatePicker(
+                      context: context,
+                      initialDate: selectedDate,
+                      firstDate: DateTime(2020),
+                      lastDate: DateTime(2099),
+                    );
+                    if (picked != null) {
+                      setDialogState(() => selectedDate = picked);
+                    }
+                  },
+                ),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Start time'),
+                  subtitle: Text(startTime.format(context)),
+                  trailing: const Icon(Icons.access_time),
+                  onTap: () async {
+                    final picked = await showTimePicker(
+                      context: context,
+                      initialTime: startTime,
+                    );
+                    if (picked != null) {
+                      setDialogState(() => startTime = picked);
+                    }
+                  },
+                ),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Stop time'),
+                  subtitle: Text(stopTime.format(context)),
+                  trailing: const Icon(Icons.access_time),
+                  onTap: () async {
+                    final picked = await showTimePicker(
+                      context: context,
+                      initialTime: stopTime,
+                    );
+                    if (picked != null) {
+                      setDialogState(() => stopTime = picked);
+                    }
+                  },
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('CANCEL'),
+            ),
+            FilledButton(
+              onPressed: () async {
+                Navigator.pop(dialogContext);
+                final dt = DateTime(
+                  selectedDate.year,
+                  selectedDate.month,
+                  selectedDate.day,
+                  startTime.hour,
+                  startTime.minute,
+                );
+                await send('SET_TIME', fields: {
+                  'year': dt.year,
+                  'month': dt.month,
+                  'day': dt.day,
+                  'hour': dt.hour,
+                  'minute': dt.minute,
+                  'second': 0,
+                  'wday': dt.weekday % 7,
+                });
+              },
+              child: const Text('SAVE'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _setSchedule() async {
