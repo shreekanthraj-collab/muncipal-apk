@@ -356,7 +356,9 @@ class _MapScreenState extends State<MapScreen> {
   List<Marker> _buildMarkers() {
     final markers = _valves.map((valve) {
       final isFault = _ocFaults[valve.id] == true;
-      final pinColor = isFault || valve.isGsm ? Colors.red : Colors.blue;
+      final pinColor = isFault
+          ? Colors.red
+          : (valve.isGsm ? Colors.orange : Colors.blue);
       return Marker(
         point: LatLng(valve.latitude, valve.longitude),
         width: 110,
@@ -422,6 +424,10 @@ class _MapScreenState extends State<MapScreen> {
 
   Widget _buildValveRow(_ValveMapItem valve) {
     final isSelected = valve.id == _selectedId;
+    final isFault = _ocFaults[valve.id] == true;
+    final pinColor = isFault
+        ? Colors.red
+        : (valve.isGsm ? Colors.orange : Colors.blue);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
