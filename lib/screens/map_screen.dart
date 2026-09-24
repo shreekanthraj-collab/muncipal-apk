@@ -74,12 +74,18 @@ class _MapScreenState extends State<MapScreen> {
   @override
   void initState() {
     super.initState();
+    ValveFaultStorage.changes.addListener(_onFaultStorageChanged);
     _loadValves();
     _locatePhone(initial: true);
   }
 
+  void _onFaultStorageChanged() {
+    if (mounted) unawaited(_loadFaults());
+  }
+
   @override
   void dispose() {
+    ValveFaultStorage.changes.removeListener(_onFaultStorageChanged);
     _mapNameController.dispose();
     super.dispose();
   }
@@ -349,6 +355,8 @@ class _MapScreenState extends State<MapScreen> {
 
   List<Marker> _buildMarkers() {
     final markers = _valves.map((valve) {
+      final isFault = _ocFaults[valve.id] == true;
+      final pinColor = isFault || valve.isGsm ? Colors.red : Colors.blue;
       return Marker(
         point: LatLng(valve.latitude, valve.longitude),
         width: 110,
@@ -361,7 +369,7 @@ class _MapScreenState extends State<MapScreen> {
               Icon(
                 Icons.location_on,
                 size: 40,
-                color: _ocFaults[valve.id] == true ? Colors.red : (valve.isGsm ? Colors.red : Colors.blue),
+                color: pinColor,
               ),
               Container(
                 padding:
@@ -444,14 +452,12 @@ class _MapScreenState extends State<MapScreen> {
                   width: 42,
                   height: 42,
                   decoration: BoxDecoration(
-                    color: _ocFaults[valve.id] == true
-                        ? Colors.red.withValues(alpha: 0.10)
-                        : (valve.isGsm ? Colors.red.withValues(alpha: 0.10) : Colors.blue.withValues(alpha: 0.10)),
+                    color: pinColor.withValues(alpha: 0.10),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Icon(
                     Icons.water_damage_outlined,
-                    color: _ocFaults[valve.id] == true ? Colors.red : (valve.isGsm ? Colors.red : Colors.blue),
+                    color: pinColor,
                     size: 25,
                   ),
                 ),
