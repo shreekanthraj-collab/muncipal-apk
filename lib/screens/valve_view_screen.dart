@@ -201,7 +201,7 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
               if (!widget.isLora) ...[
                 const SizedBox(width: 12),
                 OutlinedButton(
-                  onPressed: () => _sendCommand('OTA_UPDATE'),
+                  onPressed: () => send('OTA_UPDATE'),
                   child: const Text('OTA'),
                 ),
               ],
