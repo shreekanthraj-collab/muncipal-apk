@@ -249,20 +249,32 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
                 children: [
                   Expanded(
                     child: OutlinedButton(
-                      onPressed: () => setState(() {
-                        ocFault = true;
-                        status = 'OC TRIP';
-                      }),
+                      onPressed: () async {
+                        setState(() {
+                          ocFault = true;
+                          status = 'OC TRIP';
+                        });
+                        final valveId = selectedValveId;
+                        if (valveId != null && valveId.isNotEmpty) {
+                          await ValveFaultStorage.save(valveId, true);
+                        }
+                      },
                       child: const Text('TEST OC TRIP'),
                     ),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: OutlinedButton(
-                      onPressed: () => setState(() {
-                        ocFault = false;
-                        status = 'STOPPED';
-                      }),
+                      onPressed: () async {
+                        setState(() {
+                          ocFault = false;
+                          status = 'STOPPED';
+                        });
+                        final valveId = selectedValveId;
+                        if (valveId != null && valveId.isNotEmpty) {
+                          await ValveFaultStorage.save(valveId, false);
+                        }
+                      },
                       child: const Text('CLEAR OC'),
                     ),
                   ),
