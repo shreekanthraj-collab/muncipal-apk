@@ -397,16 +397,16 @@ class _MapScreenState extends State<MapScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
-                  padding: const EdgeInsets.all(7),
+                  padding: const EdgeInsets.all(4),
                   decoration: BoxDecoration(
                     color: Colors.blue,
                     shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 3),
+                    border: Border.all(color: Colors.white, width: 2),
                   ),
                   child: const Icon(
                     Icons.my_location,
                     color: Colors.white,
-                    size: 20,
+                    size: 14,
                   ),
                 ),
                 const Text(
