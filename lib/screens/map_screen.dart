@@ -107,6 +107,7 @@ class _MapScreenState extends State<MapScreen> {
             _selectedId = null;
             _loading = false;
           });
+          await _loadFaults();
         }
         return;
       }
