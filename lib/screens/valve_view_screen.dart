@@ -195,7 +195,17 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
               ),
             ],
             const SizedBox(height: 12),
-            Row(children: [const Expanded(child: Text('FW VERSION', style: TextStyle(fontWeight: FontWeight.bold))), Text(widget.isLora ? 'LoRa FW 1.0.0' : 'GSM FW 1.0.0')]),
+            Row(children: [
+              const Expanded(child: Text('FW VERSION', style: TextStyle(fontWeight: FontWeight.bold))),
+              Text(widget.isLora ? 'LoRa FW 1.0.0' : 'GSM FW 1.0.0'),
+              if (!widget.isLora) ...[
+                const SizedBox(width: 12),
+                OutlinedButton(
+                  onPressed: () => _sendCommand('OTA_UPDATE'),
+                  child: const Text('OTA'),
+                ),
+              ],
+            ]),
             if (widget.isLora) ...[
               const SizedBox(height: 8),
               Row(children: [
