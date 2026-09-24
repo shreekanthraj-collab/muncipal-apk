@@ -358,7 +358,7 @@ class _MapScreenState extends State<MapScreen> {
       final isFault = _ocFaults[valve.id] == true;
       final pinColor = isFault
           ? Colors.red
-          : (valve.isGsm ? Colors.orange : Colors.blue);
+          : (valve.isGsm ? Colors.green : Colors.blue);
       return Marker(
         point: LatLng(valve.latitude, valve.longitude),
         width: 110,
@@ -427,7 +427,7 @@ class _MapScreenState extends State<MapScreen> {
     final isFault = _ocFaults[valve.id] == true;
     final pinColor = isFault
         ? Colors.red
-        : (valve.isGsm ? Colors.orange : Colors.blue);
+        : (valve.isGsm ? Colors.green : Colors.blue);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
