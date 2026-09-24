@@ -282,6 +282,90 @@ class _ValveDetailScreenState extends State<ValveDetailScreen> {
       ),
     );
   }
+  Future<void> showClockSettingsDialog() async {
+    DateTime selectedDate = DateTime.now();
+    TimeOfDay startTime = const TimeOfDay(hour: 6, minute: 0);
+    TimeOfDay stopTime = const TimeOfDay(hour: 18, minute: 0);
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('DATE SET'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Date'),
+                subtitle: Text(
+                  '${selectedDate.year.toString().padLeft(4, '0')}-'
+                  '${selectedDate.month.toString().padLeft(2, '0')}-'
+                  '${selectedDate.day.toString().padLeft(2, '0')}',
+                ),
+                trailing: const Icon(Icons.calendar_today),
+                onTap: () async {
+                  final picked = await showDatePicker(
+                    context: context,
+                    initialDate: selectedDate,
+                    firstDate: DateTime.now(),
+                    lastDate: DateTime.now().add(const Duration(days: 3650)),
+                  );
+                  if (picked != null) {
+                    setDialogState(() => selectedDate = picked);
+                  }
+                },
+              ),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Start time'),
+                subtitle: Text(startTime.format(context)),
+                trailing: const Icon(Icons.access_time),
+                onTap: () async {
+                  final picked = await showTimePicker(
+                    context: context,
+                    initialTime: startTime,
+                  );
+                  if (picked != null) {
+                    setDialogState(() => startTime = picked);
+                  }
+                },
+              ),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('End time'),
+                subtitle: Text(stopTime.format(context)),
+                trailing: const Icon(Icons.access_time),
+                onTap: () async {
+                  final picked = await showTimePicker(
+                    context: context,
+                    initialTime: stopTime,
+                  );
+                  if (picked != null) {
+                    setDialogState(() => stopTime = picked);
+                  }
+                },
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('CANCEL'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(dialogContext);
+                _sendCommand('CLOCK_WORK_SET');
+              },
+              child: const Text('SAVE'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Color statusColor() {
     switch (status) {
       case 'OPENING':
@@ -610,15 +694,16 @@ class _ValveDetailScreenState extends State<ValveDetailScreen> {
                     const Divider(height: 24),
                     Row(children: [
                       actionButton('CLOCK VIEW', () => _sendCommand('CLOCK_VIEW')),
-                      actionButton('START TIME', () => _sendCommand('CLOCK_START_TIME')),
+                      actionButton('DATE SET', showClockSettingsDialog),
                     ]),
                     const SizedBox(height: 8),
-                    Row(children: [
-                      actionButton('STOP TIME', () => _sendCommand('CLOCK_STOP_TIME')),
-                      actionButton('DATE SET', () => _sendCommand('CLOCK_DATE')),
-                    ]),
-                    const SizedBox(height: 8),
-                    SizedBox(height: 48, child: OutlinedButton(onPressed: () => _sendCommand('CLOCK_WORK_SET'), child: const Text('WORK SET'))),
+                    SizedBox(
+                      height: 48,
+                      child: OutlinedButton(
+                        onPressed: () => _sendCommand('CLOCK_WORK_SET'),
+                        child: const Text('WORK SET'),
+                      ),
+                    ),
                   ],
                 ),
               ),
