@@ -386,37 +386,24 @@ class _MapScreenState extends State<MapScreen> {
     }).toList();
 
     if (_phoneLocation != null) {
-      markers.add(
+      markers.insert(
+        0,
         Marker(
           point: _phoneLocation!,
-          width: 80,
-          height: 100,
-          child: FittedBox(
-            fit: BoxFit.contain,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    color: Colors.blue,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 2),
-                  ),
-                  child: const Icon(
-                    Icons.my_location,
-                    color: Colors.white,
-                    size: 14,
-                  ),
-                ),
-                const Text(
-                  'You',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    backgroundColor: Colors.white,
-                  ),
-                ),
-              ],
+          width: 36,
+          height: 36,
+          child: Container(
+            width: 30,
+            height: 30,
+            decoration: BoxDecoration(
+              color: Colors.blue,
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white, width: 2),
+            ),
+            child: const Icon(
+              Icons.my_location,
+              color: Colors.white,
+              size: 16,
             ),
           ),
         ),
