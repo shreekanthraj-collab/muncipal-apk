@@ -215,40 +215,73 @@ class _ValveDetailScreenState extends State<ValveDetailScreen> {
   }
 
   Future<void> showScheduleDialog() async {
-    final start = TextEditingController(text: '06:00');
-    final stop = TextEditingController(text: '18:00');
-    final date = TextEditingController(text: 'YYYY-MM-DD');
+    DateTime selectedDate = DateTime.now();
+    TimeOfDay startTime = const TimeOfDay(hour: 6, minute: 0);
+    TimeOfDay stopTime = const TimeOfDay(hour: 18, minute: 0);
 
     await showDialog<void>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Set Schedule'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(controller: date, decoration: const InputDecoration(labelText: 'Date')),
-            TextField(controller: start, decoration: const InputDecoration(labelText: 'Start time')),
-            TextField(controller: stop, decoration: const InputDecoration(labelText: 'Stop time')),
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Set Schedule'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Date'),
+                subtitle: Text(
+                  '${selectedDate.year.toString().padLeft(4, '0')}-'
+                  '${selectedDate.month.toString().padLeft(2, '0')}-'
+                  '${selectedDate.day.toString().padLeft(2, '0')}',
+                ),
+                trailing: const Icon(Icons.calendar_today),
+                onTap: () async {
+                  final picked = await showDatePicker(
+                    context: context,
+                    initialDate: selectedDate,
+                    firstDate: DateTime.now(),
+                    lastDate: DateTime.now().add(const Duration(days: 3650)),
+                  );
+                  if (picked != null) setDialogState(() => selectedDate = picked);
+                },
+              ),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Start time'),
+                subtitle: Text(startTime.format(context)),
+                trailing: const Icon(Icons.access_time),
+                onTap: () async {
+                  final picked = await showTimePicker(context: context, initialTime: startTime);
+                  if (picked != null) setDialogState(() => startTime = picked);
+                },
+              ),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Stop time'),
+                subtitle: Text(stopTime.format(context)),
+                trailing: const Icon(Icons.access_time),
+                onTap: () async {
+                  final picked = await showTimePicker(context: context, initialTime: stopTime);
+                  if (picked != null) setDialogState(() => stopTime = picked);
+                },
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('CANCEL')),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(dialogContext);
+                _sendCommand('SCHEDULE_SET');
+              },
+              child: const Text('SAVE'),
+            ),
           ],
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('CANCEL')),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _sendCommand('SCHEDULE_SET');
-            },
-            child: const Text('SAVE'),
-          ),
-        ],
       ),
     );
-
-    start.dispose();
-    stop.dispose();
-    date.dispose();
   }
-
   Color statusColor() {
     switch (status) {
       case 'OPENING':
