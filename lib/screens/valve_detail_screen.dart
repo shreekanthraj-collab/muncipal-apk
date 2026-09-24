@@ -43,6 +43,7 @@ class _ValveDetailScreenState extends State<ValveDetailScreen> {
     communicationId: '',
     ocFault: false,
     lowVoltageBypass: false,
+    gwid: '',
   );
 
   void selectPosition(int value) {
@@ -189,6 +190,7 @@ class _ValveDetailScreenState extends State<ValveDetailScreen> {
         communicationId: valveData.communicationId,
         ocFault: true,
         lowVoltageBypass: valveData.lowVoltageBypass,
+        gwid: valveData.gwid,
       );
       status = 'OC TRIP';
     });
@@ -205,6 +207,7 @@ class _ValveDetailScreenState extends State<ValveDetailScreen> {
         communicationId: valveData.communicationId,
         ocFault: false,
         lowVoltageBypass: false,
+        gwid: valveData.gwid,
       );
       status = 'STOPPED';
       voltageBypass = false;
@@ -343,6 +346,13 @@ class _ValveDetailScreenState extends State<ValveDetailScreen> {
                         const Text('1.0.0'),
                         const SizedBox(width: 12),
                         OutlinedButton(onPressed: () => _sendCommand('OTA_UPDATE'), child: const Text('OTA')),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        const Expanded(child: Text('GWID', style: TextStyle(fontWeight: FontWeight.bold))),
+                        Text(valveData.gwid.isEmpty ? '—' : valveData.gwid),
                       ],
                     ),
                   ],
