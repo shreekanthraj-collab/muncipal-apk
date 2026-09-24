@@ -34,6 +34,7 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
   double ocTrip = 5.0;
   double ocReset = 6.0;
   String communicationId = '';
+  String gwid = '';
   bool ocFault = false;
   bool lowVoltageBypass = false;
 
@@ -73,6 +74,7 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
       status = data.status;
       selectedPosition = data.actual.clamp(0, 100).toInt();
       communicationId = data.connected ? data.communicationId : '';
+      gwid = data.gwid;
       ocFault = data.ocFault;
       lowVoltageBypass = data.lowVoltageBypass;
       unawaited(ValveFaultStorage.save(data.valveId, data.ocFault));
@@ -194,6 +196,13 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
             ],
             const SizedBox(height: 12),
             Row(children: [const Expanded(child: Text('FW VERSION', style: TextStyle(fontWeight: FontWeight.bold))), Text(widget.isLora ? 'LoRa FW 1.0.0' : 'GSM FW 1.0.0')]),
+            if (widget.isLora) ...[
+              const SizedBox(height: 8),
+              Row(children: [
+                const Expanded(child: Text('GWID', style: TextStyle(fontWeight: FontWeight.bold))),
+                Text(gwid.isEmpty ? '--' : gwid),
+              ]),
+            ],
           ]))),
           if (!widget.isLora) _gsmStatusCard() else _loraStatusCard(),
           if (_currentValveHasOcFault) _ocFaultBanner(),
