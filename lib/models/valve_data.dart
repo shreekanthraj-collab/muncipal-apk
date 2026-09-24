@@ -7,6 +7,7 @@ class ValveData {
   final String communicationId;
   final bool ocFault;
   final bool lowVoltageBypass;
+  final String gwid;
 
   const ValveData({
     required this.valveId,
@@ -17,9 +18,11 @@ class ValveData {
     required this.communicationId,
     required this.ocFault,
     required this.lowVoltageBypass,
+    this.gwid = '',
   });
 
   factory ValveData.fromJson(Map<String, dynamic> json) {
+    final rawGwid = json['gwid'] ?? json['gateway_id'] ?? '';
     return ValveData(
       valveId: json['valve_id'] ?? '',
       status: json['status'] ?? 'STOPPED',
@@ -29,6 +32,7 @@ class ValveData {
       communicationId: (json['communication_id'] ?? json['device_id'] ?? json['thing_name'] ?? '').toString(),
       ocFault: _hasOcFault(json),
       lowVoltageBypass: _hasLowVoltageBypass(json),
+      gwid: rawGwid.toString(),
     );
   }
 
@@ -42,6 +46,7 @@ class ValveData {
       'communication_id': communicationId,
       'oc_fault': ocFault,
       'low_voltage_bypass': lowVoltageBypass,
+      'gwid': gwid,
     };
   }
 
