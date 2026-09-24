@@ -299,6 +299,15 @@ class _ValveDetailScreenState extends State<ValveDetailScreen> {
                         OutlinedButton(onPressed: () => _sendCommand('OTA_UPDATE'), child: const Text('OTA')),
                       ],
                     ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        const Expanded(
+                          child: Text('GWID', style: TextStyle(fontWeight: FontWeight.bold)),
+                        ),
+                        Text(valveData.gwid.isEmpty ? '—' : valveData.gwid),
+                      ],
+                    ),
                   ],
                 ),
               ),

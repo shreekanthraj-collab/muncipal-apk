@@ -4,6 +4,7 @@ class ValveData {
   final int requested;
   final int actual;
   final bool connected;
+  final String gwid;
 
   const ValveData({
     required this.valveId,
@@ -11,15 +12,18 @@ class ValveData {
     required this.requested,
     required this.actual,
     required this.connected,
+    this.gwid = '',
   });
 
   factory ValveData.fromJson(Map<String, dynamic> json) {
+    final rawGwid = json['gwid'] ?? json['gateway_id'] ?? '';
     return ValveData(
       valveId: json['valve_id'] ?? '',
       status: json['status'] ?? 'STOPPED',
       requested: (json['requested'] ?? 0).toInt(),
       actual: (json['actual'] ?? 0).toInt(),
       connected: json['connected'] ?? false,
+      gwid: rawGwid.toString(),
     );
   }
 
@@ -30,6 +34,7 @@ class ValveData {
       'requested': requested,
       'actual': actual,
       'connected': connected,
+      'gwid': gwid,
     };
   }
 }
