@@ -25,6 +25,7 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
   String selectedValveId = 'GSM-001';
   int selectedPosition = 0;
   String status = 'STOPPED';
+  String gwid = '';
   String calibration = 'IDLE';
   bool sleepBypass = false;
   double voltageThreshold = 11.50;
@@ -51,6 +52,7 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
     if (!mounted) return;
     setState(() {
       status = data.status;
+      if (widget.isLora) gwid = data.gwid;
       selectedPosition = data.actual.clamp(0, 100).toInt();
     });
   }
@@ -136,6 +138,10 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
             DropdownButtonFormField<String>(initialValue: selectedValveId, decoration: const InputDecoration(border: OutlineInputBorder()), items: valveIds.map((id) => DropdownMenuItem(value: id, child: Text(id))).toList(), onChanged: chooseValve),
             const SizedBox(height: 12),
             Row(children: [const Expanded(child: Text('FW VERSION', style: TextStyle(fontWeight: FontWeight.bold))), Text(widget.isLora ? 'LoRa FW 1.0.0' : 'GSM FW 1.0.0')]),
+            if (widget.isLora) ...[
+              const SizedBox(height: 8),
+              Row(children: [const Expanded(child: Text('GWID', style: TextStyle(fontWeight: FontWeight.bold))), Text(gwid.isEmpty ? '—' : gwid)]),
+            ],
           ]))),
           if (!widget.isLora) _gsmStatusCard() else _loraStatusCard(),
           _positionCard(),
