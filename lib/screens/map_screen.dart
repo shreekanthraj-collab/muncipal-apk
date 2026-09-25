@@ -24,6 +24,7 @@ class _ValveMapItem {
     required this.isGsm,
     required this.zone,
     required this.ward,
+    this.valveType = 'DISTRIBUTION',
   });
 
   final String id;
@@ -32,6 +33,7 @@ class _ValveMapItem {
   final bool isGsm;
   final String zone;
   final String ward;
+  final String valveType;
 
   Map<String, dynamic> toJson() => {
         'id': id,
@@ -40,6 +42,7 @@ class _ValveMapItem {
         'isGsm': isGsm,
         'zone': zone,
         'ward': ward,
+        'valveType': valveType,
       };
 
   factory _ValveMapItem.fromJson(Map<String, dynamic> json) {
@@ -51,6 +54,7 @@ class _ValveMapItem {
           json['id'].toString().toUpperCase().startsWith('GSM'),
       zone: json['zone']?.toString() ?? '',
       ward: json['ward']?.toString() ?? '',
+      valveType: json['valveType']?.toString() == 'MAIN' ? 'MAIN' : 'DISTRIBUTION',
     );
   }
 }
@@ -192,6 +196,7 @@ class _MapScreenState extends State<MapScreen> {
     final idController = TextEditingController();
     final zoneController = TextEditingController();
     final wardController = TextEditingController();
+    String valveType = 'DISTRIBUTION';
     final latController = TextEditingController(
       text: _phoneLocation?.latitude.toStringAsFixed(6) ?? '',
     );
@@ -231,6 +236,25 @@ class _MapScreenState extends State<MapScreen> {
                 decoration: const InputDecoration(
                   labelText: 'Ward No',
                   border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 10),
+              StatefulBuilder(
+                builder: (context, setDialogState) => DropdownButtonFormField<String>(
+                  initialValue: valveType,
+                  decoration: const InputDecoration(
+                    labelText: 'Valve Type',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: const [
+                    DropdownMenuItem(value: 'MAIN', child: Text('MAIN')),
+                    DropdownMenuItem(value: 'DISTRIBUTION', child: Text('DISTRIBUTION')),
+                  ],
+                  onChanged: (value) {
+                    if (value != null) {
+                      setDialogState(() => valveType = value);
+                    }
+                  },
                 ),
               ),
               const SizedBox(height: 10),
@@ -292,6 +316,7 @@ class _MapScreenState extends State<MapScreen> {
                   isGsm: id.toUpperCase().startsWith('GSM'),
                   zone: zone,
                   ward: ward,
+                  valveType: valveType,
                 ),
               );
             },
