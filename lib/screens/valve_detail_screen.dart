@@ -17,6 +17,7 @@ class ValveDetailScreen extends StatefulWidget {
 class _ValveDetailScreenState extends State<ValveDetailScreen> {
   final List<String> valveIds = const ['ORBI-001'];
   String selectedValveId = 'ORBI-001';
+  String valveType = 'DISTRIBUTION';
 
   int selectedPosition = 0;
   int requestedPosition = 0;
@@ -245,6 +246,7 @@ class _ValveDetailScreenState extends State<ValveDetailScreen> {
       setState(() {
         valveData = data;
         selectedValveId = data.valveId;
+        valveType = data.valveType;
         status = data.status;
         requestedPosition = data.requested;
         actualPosition = data.actual;
@@ -289,6 +291,33 @@ class _ValveDetailScreenState extends State<ValveDetailScreen> {
                         if (value != null) setState(() => selectedValveId = value);
                       },
                       decoration: const InputDecoration(border: OutlineInputBorder()),
+                    ),
+                    const SizedBox(height: 14),
+                    const Text(
+                      'VALVE TYPE',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    DropdownButtonFormField<String>(
+                      value: valveType,
+                      items: const [
+                        DropdownMenuItem(
+                          value: 'MAIN',
+                          child: Text('MAIN'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'DISTRIBUTION',
+                          child: Text('DISTRIBUTION'),
+                        ),
+                      ],
+                      onChanged: (value) {
+                        if (value != null) {
+                          setState(() => valveType = value);
+                        }
+                      },
+                      decoration: const InputDecoration(
+                        border: OutlineInputBorder(),
+                      ),
                     ),
                     const SizedBox(height: 14),
                     Row(
