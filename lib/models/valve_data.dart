@@ -5,12 +5,17 @@ class ValveData {
   final int actual;
   final bool connected;
 
+  // Registration/configuration classification used by SCADA.
+  // MAIN = WTP/OHT main valve; DISTRIBUTION = downstream valve.
+  final String valveType;
+
   const ValveData({
     required this.valveId,
     required this.status,
     required this.requested,
     required this.actual,
     required this.connected,
+    this.valveType = 'DISTRIBUTION',
   });
 
   factory ValveData.fromJson(Map<String, dynamic> json) {
@@ -20,6 +25,7 @@ class ValveData {
       requested: (json['requested'] ?? 0).toInt(),
       actual: (json['actual'] ?? 0).toInt(),
       connected: json['connected'] ?? false,
+      valveType: (json['valve_type'] ?? 'DISTRIBUTION').toString().toUpperCase(),
     );
   }
 
@@ -30,6 +36,7 @@ class ValveData {
       'requested': requested,
       'actual': actual,
       'connected': connected,
+      'valve_type': valveType,
     };
   }
 }
