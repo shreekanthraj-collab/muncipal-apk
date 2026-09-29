@@ -255,7 +255,8 @@ class _Rs485ModbusPageState extends State<Rs485ModbusPage> {
           ],
         ),
       ),
-    );
+    ),
+  );
   }
 }
 
