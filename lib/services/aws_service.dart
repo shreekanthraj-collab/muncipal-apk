@@ -63,6 +63,25 @@ class AwsService {
     _client.disconnect();
   }
 
+  static const String valveRegistryTopic = 'orb/scada/valve-registry';
+
+  Future<void> publishValveRegistrySnapshot(
+    List<Map<String, dynamic>> registrations,
+  ) async {
+    if (!_connected) {
+      throw StateError('AWS/MQTT not connected');
+    }
+
+    final builder = MqttClientPayloadBuilder();
+    builder.addString(jsonEncode(registrations));
+
+    _client.publishMessage(
+      valveRegistryTopic,
+      MqttQos.atLeastOnce,
+      builder.payload!,
+    );
+  }
+
   Future<void> sendCommand(ValveCommand command) async {
     if (!_connected) {
       throw StateError('AWS/MQTT not connected');
