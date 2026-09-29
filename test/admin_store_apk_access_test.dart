@@ -45,7 +45,7 @@ void main() {
     String? payload;
 
     final publisher = ApkAccessPublisher(
-      publish: ({required t, required p}) async {
+      publish: ({required String topic: t, required String payload: p}) async {
         topic = t;
         payload = p;
       },
