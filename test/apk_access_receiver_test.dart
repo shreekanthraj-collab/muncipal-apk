@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import '../../lib/services/apk_access_contract.dart';
-import '../../lib/services/apk_access_receiver.dart';
+import 'package:orb_valve_app/services/apk_access_contract.dart';
+import 'package:orb_valve_app/services/apk_access_receiver.dart';
 
 void main() {
   test('receiver accepts a valid SCADA snapshot', () {
