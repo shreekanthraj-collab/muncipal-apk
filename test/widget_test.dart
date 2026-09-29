@@ -3,7 +3,7 @@ import 'package:orb_valve_app/main.dart';
 
 void main() {
   testWidgets('Admin valve app loads', (WidgetTester tester) async {
-    await tester.pumpWidget(const AdminValveApp());
+    await tester.pumpWidget(const OrbiValveApp());
     await tester.pumpAndSettle();
 
     expect(find.text('Smart Valve Management'), findsOneWidget);
