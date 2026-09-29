@@ -6,7 +6,12 @@ void main() {
     await tester.pumpWidget(const AdminValveApp());
     await tester.pumpAndSettle();
 
-    expect(find.text('Smart Valve Management'), findsWidgets);
+    expect(find.text('Smart Valve Management'), findsOneWidget);
+    expect(find.text('Login'), findsOneWidget);
+
+    await tester.tap(find.text('LOGIN'));
+    await tester.pumpAndSettle();
+
     expect(find.text('Select Zone and Ward'), findsOneWidget);
   });
 }
