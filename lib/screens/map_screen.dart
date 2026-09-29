@@ -71,10 +71,38 @@ class _MapScreenState extends State<MapScreen> {
   String? _selectedId;
   bool _loading = true;
   bool _locating = false;
+  bool _mapReady = false;
   final Map<String, bool> _ocFaults = {};
   String _locationStatus = 'Phone GPS not active';
 
   static const LatLng _defaultCenter = LatLng(20.5937, 78.9629);
+
+  bool _validPoint(LatLng point) =>
+      point.latitude.isFinite &&
+      point.longitude.isFinite &&
+      point.latitude >= -90 &&
+      point.latitude <= 90 &&
+      point.longitude >= -180 &&
+      point.longitude <= 180;
+
+  void _safeMove(LatLng point, double zoom) {
+    if (!_mapReady || !mounted || !_validPoint(point)) return;
+    final safeZoom = zoom.clamp(3.0, 19.0).toDouble();
+    if (!safeZoom.isFinite) return;
+    try {
+      _mapController.move(point, safeZoom);
+    } catch (_) {
+      // The map can be rebuilding while the surrounding ListView changes size.
+    }
+  }
+
+  void _onMapReady() {
+    _mapReady = true;
+    final location = _phoneLocation;
+    if (location != null) {
+      _safeMove(location, 16);
+    }
+  }
 
   @override
   void initState() {
@@ -181,7 +209,7 @@ class _MapScreenState extends State<MapScreen> {
         _locationStatus = 'Phone location active';
       });
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _mapController.move(location, 16);
+        _safeMove(location, 16);
       });
     } catch (_) {
       if (mounted) {
@@ -354,7 +382,7 @@ class _MapScreenState extends State<MapScreen> {
       );
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
-          _mapController.move(LatLng(result.latitude, result.longitude), 16);
+          _safeMove(LatLng(result.latitude, result.longitude), 16);
         }
       });
     }
@@ -473,7 +501,7 @@ class _MapScreenState extends State<MapScreen> {
           borderRadius: BorderRadius.circular(12),
           onTap: () {
             setState(() => _selectedId = isSelected ? null : valve.id);
-            _mapController.move(LatLng(valve.latitude, valve.longitude), 16);
+            _safeMove(LatLng(valve.latitude, valve.longitude), 16);
           },
           child: Padding(
             padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
@@ -529,13 +557,29 @@ class _MapScreenState extends State<MapScreen> {
                       if (isSelected &&
                           (valve.zone.isNotEmpty || valve.ward.isNotEmpty)) ...[
                         const SizedBox(height: 4),
-                        Text(
-                          'Zone: ${valve.zone}    Ward: ${valve.ward}',
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                            color: Theme.of(context).colorScheme.primary,
-                          ),
+                        Wrap(
+                          spacing: 14,
+                          runSpacing: 2,
+                          children: [
+                            if (valve.zone.isNotEmpty)
+                              Text(
+                                'Zone: ${valve.zone}',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  color: Theme.of(context).colorScheme.primary,
+                                ),
+                              ),
+                            if (valve.ward.isNotEmpty)
+                              Text(
+                                'Ward: ${valve.ward}',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  color: Theme.of(context).colorScheme.primary,
+                                ),
+                              ),
+                          ],
                         ),
                       ],
                     ],
@@ -633,6 +677,7 @@ class _MapScreenState extends State<MapScreen> {
                         FlutterMap(
                           mapController: _mapController,
                           options: MapOptions(
+                            onMapReady: _onMapReady,
                             initialCenter: _phoneLocation ??
                                 (selected == null
                                     ? _defaultCenter
@@ -675,7 +720,7 @@ class _MapScreenState extends State<MapScreen> {
                                     : 'My Location (GPS)\nLat: ${_phoneLocation!.latitude.toStringAsFixed(6)}  Lng: ${_phoneLocation!.longitude.toStringAsFixed(6)}',
                                 style: const TextStyle(
                                   fontWeight: FontWeight.w600,
-                                  fontSize: 12,
+                                  fontSize: 16,
                                 ),
                               ),
                             ),
@@ -694,19 +739,27 @@ class _MapScreenState extends State<MapScreen> {
                               const SizedBox(height: 4),
                               _MapButton(
                                 icon: Icons.add,
-                                onPressed: () => _mapController.move(
-                                  _mapController.camera.center,
-                                  (_mapController.camera.zoom + 1)
-                                      .clamp(3, 19),
-                                ),
+                                onPressed: () {
+                                  final zoom = _mapController.camera.zoom;
+                                  if (zoom.isFinite) {
+                                    _safeMove(
+                                      _mapController.camera.center,
+                                      zoom + 1,
+                                    );
+                                  }
+                                },
                               ),
                               _MapButton(
                                 icon: Icons.remove,
-                                onPressed: () => _mapController.move(
-                                  _mapController.camera.center,
-                                  (_mapController.camera.zoom - 1)
-                                      .clamp(3, 19),
-                                ),
+                                onPressed: () {
+                                  final zoom = _mapController.camera.zoom;
+                                  if (zoom.isFinite) {
+                                    _safeMove(
+                                      _mapController.camera.center,
+                                      zoom - 1,
+                                    );
+                                  }
+                                },
                               ),
                             ],
                           ),
@@ -752,14 +805,13 @@ class _MapScreenState extends State<MapScreen> {
                             ),
                           )
                         else
-                          SizedBox(
-                            height: 430,
-                            child: ListView.builder(
-                              padding: EdgeInsets.zero,
-                              itemCount: _valves.length,
-                              itemBuilder: (context, index) =>
-                                  _buildValveRow(_valves[index]),
-                            ),
+                          ListView.builder(
+                            padding: EdgeInsets.zero,
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            itemCount: _valves.length,
+                            itemBuilder: (context, index) =>
+                                _buildValveRow(_valves[index]),
                           ),
                       ],
                     ),
