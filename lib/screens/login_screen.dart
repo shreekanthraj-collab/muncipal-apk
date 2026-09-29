@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'home_screen.dart';
+import 'local_scada_registration_test.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -83,6 +84,14 @@ class _LoginScreenState extends State<LoginScreen> {
                         child: TextButton(onPressed: forgotPassword, child: const Text('Forgot Password?')),
                       ),
                       FilledButton(onPressed: login, child: const Padding(padding: EdgeInsets.all(12), child: Text('LOGIN'))),
+                      const SizedBox(height: 10),
+                      OutlinedButton.icon(
+                        onPressed: () {
+                          Navigator.of(context).push(MaterialPageRoute(builder: (_) => const LocalScadaRegistrationTestScreen()));
+                        },
+                        icon: const Icon(Icons.science_outlined),
+                        label: const Text('LOCAL SCADA REGISTRATION TEST'),
+                      ),
                       const SizedBox(height: 14),
                       const ListTile(
                         leading: Icon(Icons.verified_user),
