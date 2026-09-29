@@ -1,11 +1,74 @@
 import 'package:flutter/material.dart';
+import 'services/apk_access_contract.dart';
+import 'services/apk_access_publisher.dart';
 import 'pages/valve_page.dart';
 import 'pages/map_page.dart';
 import 'pages/rs485_page.dart';
 
 const blue=Color(0xFF07539B), purple=Color(0xFF5B45E6), lightBlue=Color(0xFFEAF4FF);
 class Valve { Valve(this.id,this.type,{this.fw='1.2.1',this.rssi=-67,this.sf=7}); final String id,type; String fw; int rssi,sf,position=0; double? lat,lng; bool online=true; }
-class AdminStore extends ChangeNotifier { final zones=['Zone 01','Zone 02']; final wards=['Ward 01','Ward 02']; final valves=[Valve('GSM-001','GSM',fw:'1.0.3'),Valve('GSM-002','GSM',fw:'1.0.3'),Valve('LoRa-001','LoRa'),Valve('LoRa-002','LoRa')]; String zone='Zone 01',ward='Ward 01'; Valve? get(String id)=>valves.where((v)=>v.id==id).isEmpty?null:valves.firstWhere((v)=>v.id==id); void addZone(String x){x=x.trim();if(x.isNotEmpty&&!zones.contains(x)){zones.add(x);zone=x;notifyListeners();}} void addWard(String x){x=x.trim();if(x.isNotEmpty&&!wards.contains(x)){wards.add(x);ward=x;notifyListeners();}} void addValve(String id,String type){id=id.trim();if(id.isNotEmpty&&get(id)==null){valves.add(Valve(id,type));notifyListeners();}} void position(String id,int p){get(id)?.position=p;notifyListeners();} }
+class AdminStore extends ChangeNotifier {
+  final zones = ['Zone 01', 'Zone 02'];
+  final wards = ['Ward 01', 'Ward 02'];
+  final valves = [
+    Valve('GSM-001', 'GSM', fw: '1.0.3'),
+    Valve('GSM-002', 'GSM', fw: '1.0.3'),
+    Valve('LoRa-001', 'LoRa'),
+    Valve('LoRa-002', 'LoRa'),
+  ];
+  final List<ApkAccessGrant> apkAccessGrants = [];
+  String zone = 'Zone 01', ward = 'Ward 01';
+
+  Valve? get(String id) =>
+      valves.where((v) => v.id == id).isEmpty ? null : valves.firstWhere((v) => v.id == id);
+
+  ApkAccessSnapshot get apkAccessSnapshot =>
+      ApkAccessSnapshot(grants: List<ApkAccessGrant>.unmodifiable(apkAccessGrants));
+
+  void addApkAccessGrant({
+    required String phone,
+    required List<String> zones,
+    bool enabled = true,
+  }) {
+    final normalizedPhone = phone.trim();
+    final normalizedZones = zones
+        .map((z) => z.trim())
+        .where((z) => z.isNotEmpty)
+        .toSet()
+        .toList(growable: false);
+    if (normalizedPhone.isEmpty || normalizedZones.isEmpty) return;
+
+    apkAccessGrants.removeWhere((g) => g.phone.trim() == normalizedPhone);
+    apkAccessGrants.add(ApkAccessGrant(
+      phone: normalizedPhone,
+      zones: normalizedZones,
+      enabled: enabled,
+    ));
+    notifyListeners();
+  }
+
+  void setApkAccessEnabled(String phone, bool enabled) {
+    final index = apkAccessGrants.indexWhere((g) => g.phone.trim() == phone.trim());
+    if (index < 0) return;
+    final current = apkAccessGrants[index];
+    apkAccessGrants[index] = ApkAccessGrant(
+      phone: current.phone,
+      zones: List<String>.from(current.zones),
+      enabled: enabled,
+    );
+    notifyListeners();
+  }
+
+  void removeApkAccessGrant(String phone) {
+    apkAccessGrants.removeWhere((g) => g.phone.trim() == phone.trim());
+    notifyListeners();
+  }
+
+  void addZone(String x){x=x.trim();if(x.isNotEmpty&&!zones.contains(x)){zones.add(x);zone=x;notifyListeners();}}
+  void addWard(String x){x=x.trim();if(x.isNotEmpty&&!wards.contains(x)){wards.add(x);ward=x;notifyListeners();}}
+  void addValve(String id,String type){id=id.trim();if(id.isNotEmpty&&get(id)==null){valves.add(Valve(id,type));notifyListeners();}}
+  void position(String id,int p){get(id)?.position=p;notifyListeners();}
+}
 final store=AdminStore();
 class AdminValveApp extends StatelessWidget { const AdminValveApp({super.key}); @override Widget build(BuildContext c)=>MaterialApp(debugShowCheckedModeBanner:false,title:'Smart Valve Management',theme:ThemeData(useMaterial3:true,colorScheme:ColorScheme.fromSeed(seedColor:blue)),home:const LoginPage()); }
 class Info extends StatelessWidget{const Info({super.key,required this.icon,required this.title,required this.text});final IconData icon;final String title,text;@override Widget build(BuildContext c)=>Container(width:double.infinity,padding:const EdgeInsets.all(11),decoration:BoxDecoration(color:lightBlue,borderRadius:BorderRadius.circular(10)),child:Row(children:[Icon(icon,color:Colors.blue),const SizedBox(width:10),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text(title,style:const TextStyle(fontWeight:FontWeight.w800,color:Color(0xFF10296B))),Text(text)]))]));}
