@@ -1,6 +1,24 @@
 import 'package:flutter/material.dart';
-import 'admin_app.dart';
 
-export 'admin_app.dart';
+import 'screens/login_screen.dart';
 
-void main() => runApp(const AdminValveApp());
+void main() {
+  runApp(const OrbiValveApp());
+}
+
+class OrbiValveApp extends StatelessWidget {
+  const OrbiValveApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      title: 'ORBI Valve',
+      theme: ThemeData(
+        useMaterial3: true,
+        colorSchemeSeed: Colors.blue,
+      ),
+      home: const LoginScreen(),
+    );
+  }
+}
