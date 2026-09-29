@@ -58,6 +58,9 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
         selectedValveId = ids.isEmpty ? null : ids.first;
       }
     });
+    if (selectedValveId != null) {
+      unawaited(_loadSelectedFault(selectedValveId!));
+    }
   }
 
   Future<void> _connect() async {
@@ -70,6 +73,7 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
 
   void _applyStatus(ValveData data) {
     if (!mounted) return;
+    if (selectedValveId != null && data.valveId != selectedValveId) return;
     setState(() {
       status = data.status;
       selectedPosition = data.actual.clamp(0, 100).toInt();
@@ -113,7 +117,22 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
 
   void chooseValve(String? value) {
     if (value == null) return;
-    setState(() => selectedValveId = value);
+    setState(() {
+      selectedValveId = value;
+      status = 'STOPPED';
+      communicationId = '';
+      gwid = '';
+      lowVoltageBypass = false;
+    });
+    unawaited(_loadSelectedFault(value));
+  }
+
+  Future<void> _loadSelectedFault(String valveId) async {
+    final fault = await ValveFaultStorage.load(valveId);
+    if (!mounted || selectedValveId != valveId) return;
+    setState(() {
+      ocFault = fault;
+    });
   }
 
   Future<void> setValve() async {
@@ -150,7 +169,13 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
   Widget build(BuildContext context) {
     final title = widget.isLora ? 'LoRa VALVE VIEW' : 'GSM / LTE VALVE VIEW';
     return Scaffold(
-      appBar: AppBar(title: Text(title), centerTitle: true),
+      appBar: AppBar(
+        centerTitle: true,
+        title: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(title, maxLines: 1),
+        ),
+      ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(12, 10, 12, 24),
         children: [
@@ -197,7 +222,13 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
             const SizedBox(height: 12),
             Row(children: [
               const Expanded(child: Text('FW VERSION', style: TextStyle(fontWeight: FontWeight.bold))),
-              Text(widget.isLora ? 'LoRa FW 1.0.0' : 'GSM FW 1.0.0'),
+              Flexible(
+                child: Text(
+                  widget.isLora ? 'LoRa FW 1.0.0' : 'GSM FW 1.0.0',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
               if (!widget.isLora) ...[
                 const SizedBox(width: 12),
                 OutlinedButton(
@@ -555,5 +586,22 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
 
   Widget _card(String title, Widget child) => Card(child: Padding(padding: const EdgeInsets.all(14), child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)), const SizedBox(height: 10), child])));
 
-  Widget _small(String text, Future<void> Function() onPressed) => SizedBox(height: 46, child: OutlinedButton(onPressed: () => onPressed(), child: Text(text)));
+  Widget _small(String text, Future<void> Function() onPressed) => SizedBox(
+        height: 46,
+        child: OutlinedButton(
+          onPressed: () => onPressed(),
+          style: OutlinedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            visualDensity: VisualDensity.compact,
+          ),
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              text,
+              maxLines: 1,
+              style: const TextStyle(fontSize: 13),
+            ),
+          ),
+        ),
+      );
 }
