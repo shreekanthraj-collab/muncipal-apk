@@ -23,9 +23,25 @@ class HomeScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Row(children: [
-                Expanded(child: TextFormField(decoration: const InputDecoration(labelText: 'Zone No', border: OutlineInputBorder()))),
+                Expanded(
+                  child: TextFormField(
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: 'Zone No',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ),
                 const SizedBox(width: 12),
-                Expanded(child: TextFormField(decoration: const InputDecoration(labelText: 'Ward No', border: OutlineInputBorder()))),
+                Expanded(
+                  child: TextFormField(
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: 'Ward No',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ),
               ]),
               const SizedBox(height: 28),
               _viewButton(context, 'GSM / LTE VALVE VIEW', Icons.cell_tower, const GsmScreen()),
@@ -48,7 +64,14 @@ class HomeScreen extends StatelessWidget {
       child: FilledButton.icon(
         onPressed: () => open(context, page),
         icon: Icon(icon),
-        label: Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
+        label: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            label,
+            maxLines: 1,
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+        ),
       ),
     );
   }
