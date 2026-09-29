@@ -40,6 +40,9 @@ class _ValveDetailScreenState extends State<ValveDetailScreen> {
     requested: 0,
     actual: 0,
     connected: false,
+    communicationId: '',
+    ocFault: false,
+    lowVoltageBypass: false,
   );
 
   void selectPosition(int value) {
