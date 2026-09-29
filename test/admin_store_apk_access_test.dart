@@ -41,13 +41,13 @@ void main() {
   });
 
   test('publisher uses the frozen access topic and snapshot JSON', () async {
-    String? topic;
-    String? payload;
+    String? publishedTopic;
+    String? publishedPayload;
 
     final publisher = ApkAccessPublisher(
-      publish: ({required String topic: t, required String payload: p}) async {
-        topic = t;
-        payload = p;
+      publish: ({required String topic, required String payload}) async {
+        publishedTopic = topic;
+        publishedPayload = payload;
       },
     );
 
@@ -63,7 +63,7 @@ void main() {
 
     await publisher.publishSnapshot(snapshot);
 
-    expect(topic, apkAccessSnapshotTopic);
-    expect(payload, snapshot.encode());
+    expect(publishedTopic, apkAccessSnapshotTopic);
+    expect(publishedPayload, snapshot.encode());
   });
 }
