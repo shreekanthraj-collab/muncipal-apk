@@ -157,8 +157,14 @@ class _Rs485ModbusPageState extends State<Rs485ModbusPage> {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: SingleChildScrollView(
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('RS485 / MODBUS'),
+        centerTitle: true,
+      ),
+      body: SafeArea(
+        top: false,
+        child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(12, 12, 12, 28),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
