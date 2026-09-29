@@ -12,6 +12,10 @@ void main() {
     await tester.tap(find.text('LOGIN'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Select Zone and Ward'), findsOneWidget);
+    expect(find.text('ZONE / WARD'), findsOneWidget);
+    expect(find.text('GSM / LTE VALVE VIEW'), findsOneWidget);
+    expect(find.text('LoRa VALVE VIEW'), findsOneWidget);
+    expect(find.text('MAP VIEW'), findsOneWidget);
+    expect(find.text('RS485 VIEW'), findsOneWidget);
   });
 }
