@@ -35,6 +35,12 @@ class _AddValveQrScreenState extends State<AddValveQrScreen> {
         throw Exception('Server rejected QR (' + response.statusCode.toString() + ')');
       }
       final data = jsonDecode(response.body) as Map<String, dynamic>;
+      if (!mounted) return;
+      final customerId = await _askForId('Customer ID');
+      if (customerId == null) return;
+      final siteId = await _askForId('Site ID');
+      if (siteId == null) return;
+      await _confirmInstallation(token, customerId, siteId);
       await showDialog<void>(
         context: context,
         builder: (_) => AlertDialog(
@@ -60,6 +66,45 @@ class _AddValveQrScreenState extends State<AddValveQrScreen> {
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  Future<String?> _askForId(String title) async {
+    final controller = TextEditingController();
+    final value = await showDialog<String>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text(title),
+        content: TextField(
+          controller: controller,
+          decoration: InputDecoration(labelText: title),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('CANCEL')),
+          FilledButton(onPressed: () => Navigator.pop(context, controller.text.trim()), child: const Text('CONTINUE')),
+        ],
+      ),
+    );
+    controller.dispose();
+    return value == null || value.isEmpty ? null : value;
+  }
+
+  Future<void> _confirmInstallation(String token, String customerId, String siteId) async {
+    final response = await http.post(
+      Uri.parse(serverBaseUrl + '/api/v1/installation/confirm'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'registration_token': token,
+        'customer_id': customerId,
+        'site_id': siteId,
+      }),
+    );
+    if (!mounted) return;
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      throw Exception('Installation confirmation failed (' + response.statusCode.toString() + ')');
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Valve installed and activated successfully.')),
+    );
   }
 
   void _onDetect(BarcodeCapture capture) {
