@@ -18,13 +18,28 @@ class _LocalScadaRegistrationTestScreenState extends State<LocalScadaRegistratio
   final _flow = TextEditingController(text: 'FM-001');
   final _overflow = TextEditingController(text: 'OF-001');
   final _level = TextEditingController(text: 'LI-001');
+  final _latitude = TextEditingController();
+  final _longitude = TextEditingController();
   String _type = 'MAIN';
   String _transport = 'GSM';
   String _result = '';
 
   @override
   void dispose() {
-    for (final c in [_pcIp, _valveId, _zone, _ward, _oht, _flow, _overflow, _level]) { c.dispose(); }
+    for (final c in [
+      _pcIp,
+      _valveId,
+      _zone,
+      _ward,
+      _oht,
+      _flow,
+      _overflow,
+      _level,
+      _latitude,
+      _longitude,
+    ]) {
+      c.dispose();
+    }
     super.dispose();
   }
 
@@ -32,6 +47,20 @@ class _LocalScadaRegistrationTestScreenState extends State<LocalScadaRegistratio
     final ip = _pcIp.text.trim();
     final valveId = _valveId.text.trim();
     if (ip.isEmpty || valveId.isEmpty) return;
+
+    final latitude = double.tryParse(_latitude.text.trim());
+    final longitude = double.tryParse(_longitude.text.trim());
+
+    if (latitude == null || longitude == null) {
+      setState(() => _result = 'Latitude and longitude are required for map testing.');
+      return;
+    }
+
+    if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
+      setState(() => _result = 'Invalid latitude/longitude range.');
+      return;
+    }
+
     final payload = <String, dynamic>{
       'valve_id': valveId,
       'valve_type': _type,
@@ -43,7 +72,10 @@ class _LocalScadaRegistrationTestScreenState extends State<LocalScadaRegistratio
       'flow_meter_id': _flow.text.trim(),
       'overflow_sensor_id': _overflow.text.trim(),
       'level_indicator_id': _level.text.trim(),
+      'latitude': latitude,
+      'longitude': longitude,
     };
+
     setState(() => _result = 'Sending...');
     try {
       final response = await http.post(
@@ -56,45 +88,86 @@ class _LocalScadaRegistrationTestScreenState extends State<LocalScadaRegistratio
             ? 'REGISTERED: $valveId → SCADA'
             : 'FAILED (' + response.statusCode.toString() + '): ' + response.body;
       });
-    } catch (e) { setState(() => _result = 'FAILED: $e'); }
+    } catch (e) {
+      setState(() => _result = 'FAILED: $e');
+    }
   }
 
   Widget _field(String label, TextEditingController controller) => Padding(
-    padding: const EdgeInsets.only(bottom: 10),
-    child: TextField(controller: controller, decoration: InputDecoration(labelText: label, border: const OutlineInputBorder(), isDense: true)),
-  );
+        padding: const EdgeInsets.only(bottom: 10),
+        child: TextField(
+          controller: controller,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
+          decoration: InputDecoration(
+            labelText: label,
+            border: const OutlineInputBorder(),
+            isDense: true,
+          ),
+        ),
+      );
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('LOCAL SCADA REGISTRATION TEST')),
-    body: SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        const Text('ONE-TIME TEST — AWS NOT USED', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.orange)),
-        const SizedBox(height: 12),
-        _field('SCADA PC IPv4 address', _pcIp),
-        _field('Valve ID', _valveId),
-        DropdownButtonFormField<String>(
-          value: _type,
-          decoration: const InputDecoration(labelText: 'Valve type', border: OutlineInputBorder()),
-          items: const [DropdownMenuItem(value: 'MAIN', child: Text('MAIN')), DropdownMenuItem(value: 'DISTRIBUTION', child: Text('DISTRIBUTION'))],
-          onChanged: (v) => setState(() => _type = v ?? 'MAIN'),
+        appBar: AppBar(title: const Text('LOCAL SCADA REGISTRATION TEST')),
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text(
+                'ONE-TIME TEST — AWS NOT USED',
+                style: TextStyle(fontWeight: FontWeight.bold, color: Colors.orange),
+              ),
+              const SizedBox(height: 12),
+              _field('SCADA PC IPv4 address', _pcIp),
+              _field('Valve ID', _valveId),
+              DropdownButtonFormField<String>(
+                value: _type,
+                decoration: const InputDecoration(
+                  labelText: 'Valve type',
+                  border: OutlineInputBorder(),
+                ),
+                items: const [
+                  DropdownMenuItem(value: 'MAIN', child: Text('MAIN')),
+                  DropdownMenuItem(value: 'DISTRIBUTION', child: Text('DISTRIBUTION')),
+                ],
+                onChanged: (v) => setState(() => _type = v ?? 'MAIN'),
+              ),
+              const SizedBox(height: 10),
+              DropdownButtonFormField<String>(
+                value: _transport,
+                decoration: const InputDecoration(
+                  labelText: 'Transport',
+                  border: OutlineInputBorder(),
+                ),
+                items: const [
+                  DropdownMenuItem(value: 'GSM', child: Text('GSM')),
+                  DropdownMenuItem(value: 'LORA', child: Text('LoRa')),
+                ],
+                onChanged: (v) => setState(() => _transport = v ?? 'GSM'),
+              ),
+              const SizedBox(height: 10),
+              _field('Zone', _zone),
+              _field('Ward', _ward),
+              _field('OHT ID', _oht),
+              _field('Flow Meter ID', _flow),
+              _field('Overflow Sensor ID', _overflow),
+              _field('Level Indicator ID', _level),
+              _field('Latitude', _latitude),
+              _field('Longitude', _longitude),
+              const SizedBox(height: 8),
+              FilledButton.icon(
+                onPressed: _send,
+                icon: const Icon(Icons.cloud_upload),
+                label: const Padding(
+                  padding: EdgeInsets.all(12),
+                  child: Text('REGISTER ON SCADA'),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(_result, style: const TextStyle(fontWeight: FontWeight.bold)),
+            ],
+          ),
         ),
-        const SizedBox(height: 10),
-        DropdownButtonFormField<String>(
-          value: _transport,
-          decoration: const InputDecoration(labelText: 'Transport', border: OutlineInputBorder()),
-          items: const [DropdownMenuItem(value: 'GSM', child: Text('GSM')), DropdownMenuItem(value: 'LORA', child: Text('LoRa'))],
-          onChanged: (v) => setState(() => _transport = v ?? 'GSM'),
-        ),
-        const SizedBox(height: 10),
-        _field('Zone', _zone), _field('Ward', _ward), _field('OHT ID', _oht),
-        _field('Flow Meter ID', _flow), _field('Overflow Sensor ID', _overflow), _field('Level Indicator ID', _level),
-        const SizedBox(height: 8),
-        FilledButton.icon(onPressed: _send, icon: const Icon(Icons.cloud_upload), label: const Padding(padding: EdgeInsets.all(12), child: Text('REGISTER ON SCADA'))),
-        const SizedBox(height: 12),
-        Text(_result, style: const TextStyle(fontWeight: FontWeight.bold)),
-      ]),
-    ),
-  );
+      );
 }
