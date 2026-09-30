@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:mobile_scanner/mobile_scanner.dart';
 
 class AddValveQrScreen extends StatefulWidget {
@@ -11,11 +13,53 @@ class AddValveQrScreen extends StatefulWidget {
 class _AddValveQrScreenState extends State<AddValveQrScreen> {
   final MobileScannerController _scanner = MobileScannerController();
   bool _handled = false;
+  bool _loading = false;
+  static const serverBaseUrl = String.fromEnvironment('ORB_SERVER_URL', defaultValue: 'http://10.0.2.2:8000');
 
   @override
   void dispose() {
     _scanner.dispose();
     super.dispose();
+  }
+
+  Future<void> _resolveToken(String token) async {
+    setState(() => _loading = true);
+    try {
+      final response = await http.post(
+        Uri.parse(serverBaseUrl + '/api/v1/installation/resolve'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'registration_token': token}),
+      );
+      if (!mounted) return;
+      if (response.statusCode != 200) {
+        throw Exception('Server rejected QR (' + response.statusCode.toString() + ')');
+      }
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      await showDialog<void>(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: const Text('Valve Found'),
+          content: Text(
+            'Valve: ' + (data['valve_id'] ?? '').toString() + '\n'
+            'Actuator: ' + (data['device_id'] ?? 'Not linked').toString() + '\n'
+            'Transport: ' + (data['transport_type'] ?? '').toString() + '\n'
+            'Status: ' + (data['installation_status'] ?? '').toString(),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('CONTINUE')),
+          ],
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _handled = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Unable to register valve: ' + e.toString())),
+      );
+      _scanner.start();
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
   }
 
   void _onDetect(BarcodeCapture capture) {
@@ -25,7 +69,7 @@ class _AddValveQrScreenState extends State<AddValveQrScreen> {
       if (value == null || value.isEmpty) continue;
       _handled = true;
       _scanner.stop();
-      Navigator.of(context).pop(value);
+      _resolveToken(value);
       return;
     }
   }
