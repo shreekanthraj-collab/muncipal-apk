@@ -17,6 +17,25 @@ class ServerApiService {
           'Authorization': 'Bearer $bearerToken',
       };
 
+  Future<Map<String, dynamic>> registerValveById({
+    required String valveId,
+    required String wardId,
+    required String zoneId,
+    required double latitude,
+    required double longitude,
+  }) {
+    return _post(
+      '/api/v1/municipal/valves/register-by-valve-id',
+      {
+        'valve_id': valveId,
+        'ward_id': wardId,
+        'zone_id': zoneId,
+        'latitude': latitude,
+        'longitude': longitude,
+      },
+    );
+  }
+
   Future<Map<String, dynamic>> getBillingSummary({
     required DateTime periodStart,
     required DateTime periodEnd,
