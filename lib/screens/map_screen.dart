@@ -721,8 +721,8 @@ class _MapScreenState extends State<MapScreen> {
                         ),
                         const SizedBox(height: 10),
                         FilledButton.icon(
-                          onPressed: _addValve,
-                          icon: const Icon(Icons.add),
+                          onPressed: _scanValveQr,
+                          icon: const Icon(Icons.qr_code_scanner),
                           label: const Text('SCAN VALVE QR'),
                         ),
                       ],
