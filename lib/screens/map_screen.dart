@@ -222,16 +222,48 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   Future<void> _addValve() async {
-    await Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const AddValveQrScreen()),
-    );
-    await _loadValves();
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Use the valve QR scanner to register a new actuator.'),
+    final location = _phoneLocation;
+    if (location == null) {
+      await _locatePhone();
+      if (!mounted || _phoneLocation == null) return;
+    }
+    final gps = _phoneLocation!;
+    final result = await Navigator.of(context).push<Map<String, dynamic>>(
+      MaterialPageRoute(
+        builder: (_) => AddValveQrScreen(
+          latitude: gps.latitude,
+          longitude: gps.longitude,
+        ),
       ),
     );
+    if (!mounted || result == null) return;
+
+    final id = result['id']?.toString() ?? '';
+    if (id.isEmpty) return;
+    final item = _ValveMapItem(
+      id: id,
+      latitude: (result['latitude'] as num).toDouble(),
+      longitude: (result['longitude'] as num).toDouble(),
+      isGsm: result['isGsm'] == true,
+      ward: result['ward']?.toString() ?? '',
+      zone: result['zone']?.toString() ?? '',
+      valveType: result['valveType']?.toString() ?? 'DISTRIBUTION',
+    );
+    setState(() {
+      _valves = [
+        ..._valves.where((v) => v.id != item.id),
+        item,
+      ];
+      _selectedId = item.id;
+    });
+    await _saveValves();
+    await _loadFaults();
+    _safeMove(LatLng(item.latitude, item.longitude), 18);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('$id added to the municipal map.')),
+      );
+    }
   }
 
   Future<void> _removeValve(_ValveMapItem valve) async {
