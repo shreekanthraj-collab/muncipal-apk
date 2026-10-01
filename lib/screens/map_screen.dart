@@ -306,16 +306,37 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   Future<void> _removeValve(_ValveMapItem valve) async {
-    setState(() {
-      _valves = _valves.where((item) => item.id != valve.id).toList();
-      _selectedId = _valves.isEmpty ? null : _valves.first.id;
-    });
-    await _saveValves();
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${valve.id} removed')),
-      );
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('municipal_access_token');
+    if (token == null || token.isEmpty) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Municipal session required.')));
+      return;
     }
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Deactivate valve?'),
+        content: Text(r'${valve.id} will be marked INACTIVE on the municipal server. It will not be deleted from the registry.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('CANCEL')),
+          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('DEACTIVATE')),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    final baseUrl = const String.fromEnvironment('ORB_SERVER_URL', defaultValue: 'http://10.0.2.2:8000');
+    final response = await http.post(
+      Uri.parse(r'${baseUrl}/api/v1/municipal/valves/${Uri.encodeComponent(valve.id)}/deactivate'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      dynamic detail;
+      try { detail = jsonDecode(response.body)['detail']; } catch (_) {}
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(detail?.toString() ?? 'Server rejected deactivation.')));
+      return;
+    }
+    await _syncServerValves();
+    if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(r'${valve.id} deactivated')));
   }
 
   void _rebindValve(_ValveMapItem valve) {
