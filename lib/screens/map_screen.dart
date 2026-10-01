@@ -691,6 +691,8 @@ class _MapScreenState extends State<MapScreen> {
       }
     }
 
+  }
+
   Future<void> _scanValveQr() async {
     final location = _phoneLocation;
     if (location == null) {
