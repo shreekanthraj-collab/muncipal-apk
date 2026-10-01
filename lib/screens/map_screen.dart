@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -110,6 +111,7 @@ class _MapScreenState extends State<MapScreen> {
     super.initState();
     ValveFaultStorage.changes.addListener(_onFaultStorageChanged);
     _loadValves();
+    _syncServerValves();
     _locatePhone(initial: true);
   }
 
@@ -129,6 +131,43 @@ class _MapScreenState extends State<MapScreen> {
       _ocFaults[valve.id] = await ValveFaultStorage.load(valve.id);
     }
     if (mounted) setState(() {});
+  }
+
+  Future<void> _syncServerValves() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('municipal_access_token');
+      if (token == null || token.isEmpty) return;
+      const baseUrl = String.fromEnvironment('ORB_SERVER_URL', defaultValue: 'http://10.0.2.2:8000');
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/v1/municipal/valves/placements'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+      if (response.statusCode != 200) return;
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      final rows = (body['valves'] as List<dynamic>? ?? const []);
+      final serverValves = rows.map((raw) {
+        final v = Map<String, dynamic>.from(raw as Map);
+        return _ValveMapItem(
+          id: v['valve_id'].toString(),
+          latitude: (v['latitude'] as num).toDouble(),
+          longitude: (v['longitude'] as num).toDouble(),
+          isGsm: v['transport_type']?.toString().toUpperCase() == 'GSM',
+          ward: v['ward_id']?.toString() ?? '',
+          zone: v['zone_id']?.toString() ?? '',
+        );
+      }).toList();
+      if (!mounted) return;
+      setState(() {
+        _valves = serverValves;
+        _selectedId = _valves.isNotEmpty ? _valves.first.id : null;
+        _loading = false;
+      });
+      await _saveValves();
+      await _loadFaults();
+    } catch (_) {
+      // Preserve the locally cached map if the server is unavailable.
+    }
   }
 
   Future<void> _loadValves() async {
