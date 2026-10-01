@@ -8,7 +8,86 @@ import 'package:latlong2/latlong.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/valve_fault_storage.dart';
+import '../services/server_api_service.dart';
 import 'add_valve_qr_screen.dart';
+
+class _ManualValveRegistrationDialog extends StatefulWidget {
+  const _ManualValveRegistrationDialog();
+
+  @override
+  State<_ManualValveRegistrationDialog> createState() =>
+      _ManualValveRegistrationDialogState();
+}
+
+class _ManualValveRegistrationDialogState
+    extends State<_ManualValveRegistrationDialog> {
+  final _formKey = GlobalKey<FormState>();
+  final _valveId = TextEditingController();
+  final _wardId = TextEditingController();
+  final _zoneId = TextEditingController();
+
+  @override
+  void dispose() {
+    _valveId.dispose();
+    _wardId.dispose();
+    _zoneId.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('REGISTER BY VALVE ID'),
+      content: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextFormField(
+              controller: _valveId,
+              decoration: const InputDecoration(
+                labelText: 'Valve ID',
+                hintText: 'e.g. ORB-VLV-00000001',
+              ),
+              validator: (value) =>
+                  value == null || value.trim().isEmpty ? 'Enter Valve ID' : null,
+            ),
+            TextFormField(
+              controller: _wardId,
+              decoration: const InputDecoration(labelText: 'Ward ID'),
+              validator: (value) =>
+                  value == null || value.trim().isEmpty ? 'Enter Ward ID' : null,
+            ),
+            TextFormField(
+              controller: _zoneId,
+              decoration: const InputDecoration(labelText: 'Zone ID'),
+              validator: (value) =>
+                  value == null || value.trim().isEmpty ? 'Enter Zone ID' : null,
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('CANCEL'),
+        ),
+        FilledButton(
+          onPressed: () {
+            if (_formKey.currentState!.validate()) {
+              Navigator.pop(context, {
+                'valveId': _valveId.text,
+                'wardId': _wardId.text,
+                'zoneId': _zoneId.text,
+              });
+            }
+          },
+          child: const Text('REGISTER'),
+        ),
+      ],
+    );
+  }
+}
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -389,6 +468,98 @@ class _MapScreenState extends State<MapScreen> {
     }
   }
 
+  Future<void> _registerByValveId() async {
+    final location = _phoneLocation;
+    if (location == null) {
+      await _locatePhone();
+      if (!mounted || _phoneLocation == null) return;
+    }
+
+    final values = await showDialog<Map<String, String>>(
+      context: context,
+      builder: (context) => const _ManualValveRegistrationDialog(),
+    );
+    if (!mounted || values == null) return;
+
+    final valveId = values['valveId']!.trim();
+    final wardId = values['wardId']!.trim();
+    final zoneId = values['zoneId']!.trim();
+    if (valveId.isEmpty || wardId.isEmpty || zoneId.isEmpty) return;
+
+    final prefs = await SharedPreferences.getInstance();
+    final bearer = prefs.getString('municipal_access_token');
+    if (bearer == null || bearer.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Municipal server login is required for registration.'),
+        ),
+      );
+      return;
+    }
+
+    final service = ServerApiService(
+      baseUrl: const String.fromEnvironment(
+        'ORB_SERVER_URL',
+        defaultValue: 'http://10.0.2.2:8000',
+      ),
+      bearerToken: bearer,
+    );
+
+    try {
+      final result = await service.registerValveById(
+        valveId: valveId,
+        wardId: wardId,
+        zoneId: zoneId,
+        latitude: _phoneLocation!.latitude,
+        longitude: _phoneLocation!.longitude,
+      );
+
+      final item = _ValveMapItem(
+        id: result['valve_id']?.toString() ?? valveId,
+        latitude: (result['latitude'] as num).toDouble(),
+        longitude: (result['longitude'] as num).toDouble(),
+        isGsm: false,
+        ward: result['ward_id']?.toString() ?? wardId,
+        zone: result['zone_id']?.toString() ?? zoneId,
+      );
+
+      if (_valves.any(
+        (valve) => valve.id.toUpperCase() == item.id.toUpperCase(),
+      )) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Valve is already on this map.')),
+        );
+        return;
+      }
+
+      setState(() {
+        _valves = [..._valves, item];
+        _selectedId = item.id;
+      });
+      await _saveValves();
+      await _loadFaults();
+      _safeMove(LatLng(item.latitude, item.longitude), 18);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${item.id} registered and added to the map.')),
+        );
+      }
+    } on ServerApiException catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Registration failed: ${error.body['detail'] ?? error.body}')),
+        );
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Registration failed: $error')),
+        );
+      }
+    }
+  }
+
   Future<void> _scanValveQr() async {
     final location = _phoneLocation;
     if (location == null) {
@@ -724,6 +895,12 @@ class _MapScreenState extends State<MapScreen> {
                           onPressed: _scanValveQr,
                           icon: const Icon(Icons.qr_code_scanner),
                           label: const Text('SCAN VALVE QR'),
+                        ),
+                        const SizedBox(height: 8),
+                        OutlinedButton.icon(
+                          onPressed: _registerByValveId,
+                          icon: const Icon(Icons.edit_note),
+                          label: const Text('REGISTER BY VALVE ID'),
                         ),
                       ],
                     ),
