@@ -65,13 +65,16 @@ class _AddValveQrScreenState extends State<AddValveQrScreen> {
         throw Exception('Operator session is not linked to this APK. Sign in as a municipal operator first.');
       }
 
-      final response = await http.post(
-        Uri.parse('$serverBaseUrl/api/v1/installation/resolve'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'registration_token': token}),
+      final preview = await http.get(
+        Uri.parse('$serverBaseUrl/api/v1/municipal/valves/scan-preview/${Uri.encodeComponent(token)}'),
+        headers: {'Authorization': 'Bearer $accessToken'},
       );
-      if (response.statusCode != 200) throw Exception('Server rejected QR (${response.statusCode})');
-      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      if (preview.statusCode != 200) {
+        dynamic detail;
+        try { detail = jsonDecode(preview.body)['detail']; } catch (_) {}
+        throw Exception(detail?.toString() ?? 'QR is invalid or already claimed');
+      }
+      final data = jsonDecode(preview.body) as Map<String, dynamic>;
 
       final placement = await _askPlacement();
       if (placement == null) {
