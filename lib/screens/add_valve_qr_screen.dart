@@ -60,7 +60,8 @@ class _AddValveQrScreenState extends State<AddValveQrScreen> {
     try {
       final prefs = await SharedPreferences.getInstance();
       final operatorId = prefs.getString('municipal_operator_id');
-      if (operatorId == null || operatorId.trim().isEmpty) {
+      final accessToken = prefs.getString('municipal_access_token');
+      if (operatorId == null || operatorId.trim().isEmpty || accessToken == null || accessToken.trim().isEmpty) {
         throw Exception('Operator session is not linked to this APK. Sign in as a municipal operator first.');
       }
 
