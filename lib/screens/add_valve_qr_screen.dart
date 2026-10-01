@@ -82,7 +82,7 @@ class _AddValveQrScreenState extends State<AddValveQrScreen> {
 
       final register = await http.post(
         Uri.parse('$serverBaseUrl/api/v1/municipal/valves/register-placement'),
-        headers: {'Content-Type': 'application/json', 'X-Operator-Id': operatorId},
+        headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $accessToken'},
         body: jsonEncode({
           'registration_token': token,
           'ward_id': placement['ward_id'],
