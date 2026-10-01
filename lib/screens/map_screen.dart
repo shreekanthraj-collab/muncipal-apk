@@ -8,6 +8,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/valve_fault_storage.dart';
+import 'add_valve_qr_screen.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -221,150 +222,40 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   Future<void> _addValve() async {
-    final idController = TextEditingController();
-    final zoneController = TextEditingController();
-    final wardController = TextEditingController();
-    String valveType = 'DISTRIBUTION';
-    final latController = TextEditingController(
-      text: _phoneLocation?.latitude.toStringAsFixed(6) ?? '',
-    );
-    final lngController = TextEditingController(
-      text: _phoneLocation?.longitude.toStringAsFixed(6) ?? '',
-    );
+    final location = _phoneLocation;
+    if (location == null) {
+      await _locatePhone();
+      if (!mounted || _phoneLocation == null) return;
+    }
 
-    final result = await showDialog<_ValveMapItem>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('ADD VALVE'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: idController,
-                autofocus: true,
-                decoration: const InputDecoration(
-                  labelText: 'Valve ID',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: zoneController,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
-                  labelText: 'Zone No',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: wardController,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
-                  labelText: 'Ward No',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 10),
-              StatefulBuilder(
-                builder: (context, setDialogState) => DropdownButtonFormField<String>(
-                  initialValue: valveType,
-                  decoration: const InputDecoration(
-                    labelText: 'Valve Type',
-                    border: OutlineInputBorder(),
-                  ),
-                  items: const [
-                    DropdownMenuItem(value: 'MAIN', child: Text('MAIN')),
-                    DropdownMenuItem(value: 'DISTRIBUTION', child: Text('DISTRIBUTION')),
-                  ],
-                  onChanged: (value) {
-                    if (value != null) {
-                      setDialogState(() => valveType = value);
-                    }
-                  },
-                ),
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: latController,
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
-                  signed: true,
-                ),
-                decoration: const InputDecoration(
-                  labelText: 'Latitude',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: lngController,
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
-                  signed: true,
-                ),
-                decoration: const InputDecoration(
-                  labelText: 'Longitude',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-            ],
-          ),
+    final gps = _phoneLocation!;
+    final result = await Navigator.of(context).push<Map<String, dynamic>>(
+      MaterialPageRoute(
+        builder: (_) => AddValveQrScreen(
+          latitude: gps.latitude,
+          longitude: gps.longitude,
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('CANCEL'),
-          ),
-          FilledButton(
-            onPressed: () {
-              final id = idController.text.trim();
-              final zone = zoneController.text.trim();
-              final ward = wardController.text.trim();
-              final lat = double.tryParse(latController.text.trim());
-              final lng = double.tryParse(lngController.text.trim());
-              if (id.isEmpty ||
-                  zone.isEmpty ||
-                  ward.isEmpty ||
-                  lat == null ||
-                  lng == null ||
-                  lat < -90 ||
-                  lat > 90 ||
-                  lng < -180 ||
-                  lng > 180) {
-                return;
-              }
-              Navigator.pop(
-                context,
-                _ValveMapItem(
-                  id: id,
-                  latitude: lat,
-                  longitude: lng,
-                  isGsm: id.toUpperCase().startsWith('GSM'),
-                  zone: zone,
-                  ward: ward,
-                  valveType: valveType,
-                ),
-              );
-            },
-            child: const Text('ADD'),
-          ),
-        ],
       ),
     );
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      idController.dispose();
-      zoneController.dispose();
-      wardController.dispose();
-      latController.dispose();
-      lngController.dispose();
-    });
     if (!mounted || result == null) return;
 
+    final id = result['id']?.toString() ?? '';
+    if (id.isEmpty) return;
+
+    final item = _ValveMapItem(
+      id: id,
+      latitude: (result['latitude'] as num).toDouble(),
+      longitude: (result['longitude'] as num).toDouble(),
+      isGsm: result['isGsm'] == true,
+      ward: result['ward']?.toString() ?? '',
+      zone: result['zone']?.toString() ?? '',
+      valveType: result['valveType']?.toString() ?? 'DISTRIBUTION',
+    );
+
     if (_valves.any(
-        (valve) => valve.id.toUpperCase() == result.id.toUpperCase())) {
+      (valve) => valve.id.toUpperCase() == item.id.toUpperCase(),
+    )) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Valve ID already exists')),
       );
@@ -372,17 +263,19 @@ class _MapScreenState extends State<MapScreen> {
     }
 
     setState(() {
-      _valves = [..._valves, result];
-      _selectedId = null;
+      _valves = [..._valves, item];
+      _selectedId = item.id;
     });
     await _saveValves();
+    await _loadFaults();
+
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${result.id} saved to map')),
+        SnackBar(content: Text('${item.id} added to the municipal map.')),
       );
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
-          _safeMove(LatLng(result.latitude, result.longitude), 16);
+          _safeMove(LatLng(item.latitude, item.longitude), 18);
         }
       });
     }
@@ -662,7 +555,7 @@ class _MapScreenState extends State<MapScreen> {
                         FilledButton.icon(
                           onPressed: _addValve,
                           icon: const Icon(Icons.add),
-                          label: const Text('ADD VALVE'),
+                          label: const Text('SCAN VALVE QR'),
                         ),
                       ],
                     ),
