@@ -104,12 +104,7 @@ class _AddValveQrScreenState extends State<AddValveQrScreen> {
         context: context,
         builder: (_) => AlertDialog(
           title: const Text('Valve Registered'),
-          content: Text(
-            'Valve: ${saved['valve_id'] ?? data['valve_id'] ?? ''}\n'
-            'Ward: ${saved['ward_id'] ?? ''}\n'
-            'Zone: ${saved['zone_id'] ?? ''}\n'
-            'GPS: ${widget.latitude.toStringAsFixed(6)}, ${widget.longitude.toStringAsFixed(6)}',
-          ),
+          content: _registrationSummary(saved, data),
           actions: [
             TextButton(onPressed: () => Navigator.pop(context), child: const Text('DONE')),
           ],
@@ -135,6 +130,32 @@ class _AddValveQrScreenState extends State<AddValveQrScreen> {
     }
   }
 
+
+  Widget _registrationSummary(Map<String, dynamic> saved, Map<String, dynamic> preview) {
+    final valve = Map<String, dynamic>.from(saved['valve'] ?? <String, dynamic>{});
+    final placement = Map<String, dynamic>.from(saved['placement'] ?? <String, dynamic>{});
+    final actuator = saved['actuator'] is Map ? Map<String, dynamic>.from(saved['actuator']) : null;
+    final sim = saved['sim'] is Map ? Map<String, dynamic>.from(saved['sim']) : null;
+    final aws = saved['aws_thing'] is Map ? Map<String, dynamic>.from(saved['aws_thing']) : null;
+    String state(Map<String, dynamic>? x) => x == null ? 'PENDING' : (x['status']?.toString() ?? 'ACTIVE');
+    return SingleChildScrollView(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text('Valve: ${valve['valve_id'] ?? saved['valve_id'] ?? preview['valve_id'] ?? ''}'),
+      Text('Ward: ${placement['ward_id'] ?? saved['ward_id'] ?? ''}'),
+      Text('Zone: ${placement['zone_id'] ?? saved['zone_id'] ?? ''}'),
+      Text('GPS: ${widget.latitude.toStringAsFixed(6)}, ${widget.longitude.toStringAsFixed(6)}'),
+      const Divider(),
+      Text('Actuator: ${actuator?['device_id'] ?? 'PENDING'}'),
+      Text('IMEI: ${actuator?['imei'] ?? 'PENDING'}'),
+      Text('Firmware: ${actuator?['firmware_version'] ?? 'PENDING'}'),
+      const SizedBox(height: 6),
+      Text('SIM: ${sim?['msisdn'] ?? 'PENDING'}'),
+      Text('ICCID: ${sim?['iccid'] ?? 'PENDING'}'),
+      Text('SIM status: ${state(sim)}'),
+      const SizedBox(height: 6),
+      Text('AWS Thing: ${aws?['thing_name'] ?? 'PENDING'}'),
+      Text('AWS status: ${state(aws)}'),
+    ]));
+  }
   void _onDetect(BarcodeCapture capture) {
     if (_handled || _loading) return;
     for (final barcode in capture.barcodes) {
