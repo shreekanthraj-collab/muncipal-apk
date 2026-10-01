@@ -24,34 +24,54 @@ class _AddValveQrScreenState extends State<AddValveQrScreen> {
   Future<Map<String, String>?> _askPlacement() async {
     final ward = TextEditingController();
     final zone = TextEditingController();
+    String valveType = 'DISTRIBUTION';
     final result = await showDialog<Map<String, String>>(
       context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Valve placement'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('GPS: ${widget.latitude.toStringAsFixed(6)}, ${widget.longitude.toStringAsFixed(6)}'),
-            const SizedBox(height: 12),
-            TextField(controller: ward, decoration: const InputDecoration(labelText: 'Ward ID')),
-            const SizedBox(height: 8),
-            TextField(controller: zone, decoration: const InputDecoration(labelText: 'Zone ID')),
+      builder: (_) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Valve placement'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('GPS: ${widget.latitude.toStringAsFixed(6)}, ${widget.longitude.toStringAsFixed(6)}'),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                initialValue: valveType,
+                decoration: const InputDecoration(labelText: 'Valve Type'),
+                items: const [
+                  DropdownMenuItem(value: 'MAIN', child: Text('MAIN')),
+                  DropdownMenuItem(value: 'DISTRIBUTION', child: Text('DISTRIBUTION')),
+                ],
+                onChanged: (value) {
+                  if (value != null) setDialogState(() => valveType = value);
+                },
+              ),
+              const SizedBox(height: 8),
+              TextField(controller: ward, decoration: const InputDecoration(labelText: 'Ward ID')),
+              const SizedBox(height: 8),
+              TextField(controller: zone, decoration: const InputDecoration(labelText: 'Zone ID')),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('CANCEL')),
+            FilledButton(
+              onPressed: () {
+                final w = ward.text.trim(), z = zone.text.trim();
+                if (w.isEmpty || z.isEmpty) return;
+                Navigator.pop(context, {
+                  'ward_id': w,
+                  'zone_id': z,
+                  'valve_type': valveType,
+                });
+              },
+              child: const Text('REGISTER'),
+            ),
           ],
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('CANCEL')),
-          FilledButton(
-            onPressed: () {
-              final w = ward.text.trim(), z = zone.text.trim();
-              if (w.isEmpty || z.isEmpty) return;
-              Navigator.pop(context, {'ward_id': w, 'zone_id': z});
-            },
-            child: const Text('REGISTER'),
-          ),
-        ],
       ),
     );
-    ward.dispose(); zone.dispose();
+    ward.dispose();
+    zone.dispose();
     return result;
   }
 
@@ -118,7 +138,7 @@ class _AddValveQrScreenState extends State<AddValveQrScreen> {
         'ward': saved['ward_id']?.toString() ?? '',
         'zone': saved['zone_id']?.toString() ?? '',
         'isGsm': data['transport_type']?.toString().toUpperCase() == 'GSM',
-        'valveType': 'DISTRIBUTION',
+        'valveType': placement['valve_type'] ?? 'DISTRIBUTION',
       });
     } catch (e) {
       if (!mounted) return;
