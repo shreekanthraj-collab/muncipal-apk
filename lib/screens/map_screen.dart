@@ -579,14 +579,48 @@ class _MapScreenState extends State<MapScreen> {
       return;
     }
 
+    final item = _ValveMapItem(
+      id: valveId,
+      latitude: latitude,
+      longitude: longitude,
+      isGsm: valveId.toUpperCase().startsWith('GSM'),
+      ward: wardId,
+      zone: zoneId,
+      valveType: valveType,
+    );
+
+    if (_valves.any(
+      (valve) => valve.id.toUpperCase() == item.id.toUpperCase(),
+    )) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Valve is already on this map.')),
+      );
+      return;
+    }
+
+    // Save locally first. Damaged-QR registration must work even when the
+    // municipal server is unavailable or the operator is not logged in.
+    setState(() {
+      _valves = [..._valves, item];
+      _selectedId = item.id;
+    });
+    await _saveValves();
+    await _loadFaults();
+    _safeMove(LatLng(item.latitude, item.longitude), 18);
+
     final prefs = await SharedPreferences.getInstance();
     final bearer = prefs.getString('municipal_access_token');
+
     if (bearer == null || bearer.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Municipal server login is required for registration.'),
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Valve saved on this phone. Server registration is pending until municipal login.',
+            ),
+          ),
+        );
+      }
       return;
     }
 
@@ -607,52 +641,55 @@ class _MapScreenState extends State<MapScreen> {
         longitude: longitude,
       );
 
-      final item = _ValveMapItem(
-        id: result['valve_id']?.toString() ?? valveId,
-        latitude: (result['latitude'] as num).toDouble(),
-        longitude: (result['longitude'] as num).toDouble(),
-        isGsm: false,
-        ward: result['ward_id']?.toString() ?? wardId,
-        zone: result['zone_id']?.toString() ?? zoneId,
-        valveType: valveType,
+      final serverItem = _ValveMapItem(
+        id: result['valve_id']?.toString() ?? item.id,
+        latitude: (result['latitude'] as num?)?.toDouble() ?? item.latitude,
+        longitude:
+            (result['longitude'] as num?)?.toDouble() ?? item.longitude,
+        isGsm: item.isGsm,
+        ward: result['ward_id']?.toString() ?? item.ward,
+        zone: result['zone_id']?.toString() ?? item.zone,
+        valveType: item.valveType,
       );
 
-      if (_valves.any(
-        (valve) => valve.id.toUpperCase() == item.id.toUpperCase(),
-      )) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Valve is already on this map.')),
-        );
-        return;
-      }
-
       setState(() {
-        _valves = [..._valves, item];
-        _selectedId = item.id;
+        _valves = _valves
+            .map((v) => v.id.toUpperCase() == item.id.toUpperCase()
+                ? serverItem
+                : v)
+            .toList();
+        _selectedId = serverItem.id;
       });
       await _saveValves();
-      await _loadFaults();
-      _safeMove(LatLng(item.latitude, item.longitude), 18);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${item.id} registered and added to the map.')),
+          SnackBar(
+            content: Text('${serverItem.id} saved on phone and registered on server.'),
+          ),
         );
       }
     } on ServerApiException catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Registration failed: ${error.body['detail'] ?? error.body}')),
+          SnackBar(
+            content: Text(
+              '${item.id} is saved on this phone. Server registration pending: ${error.body['detail'] ?? error.body}',
+            ),
+          ),
         );
       }
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Registration failed: $error')),
+          SnackBar(
+            content: Text(
+              '${item.id} is saved on this phone. Server registration pending: $error',
+            ),
+          ),
         );
       }
     }
-  }
 
   Future<void> _scanValveQr() async {
     final location = _phoneLocation;
