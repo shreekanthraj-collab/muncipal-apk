@@ -12,7 +12,13 @@ import '../services/server_api_service.dart';
 import 'add_valve_qr_screen.dart';
 
 class _ManualValveRegistrationDialog extends StatefulWidget {
-  const _ManualValveRegistrationDialog();
+  const _ManualValveRegistrationDialog({
+    required this.latitude,
+    required this.longitude,
+  });
+
+  final double latitude;
+  final double longitude;
 
   @override
   State<_ManualValveRegistrationDialog> createState() =>
@@ -25,12 +31,28 @@ class _ManualValveRegistrationDialogState
   final _valveId = TextEditingController();
   final _wardId = TextEditingController();
   final _zoneId = TextEditingController();
+  late final TextEditingController _latitude;
+  late final TextEditingController _longitude;
+  String _valveType = 'DISTRIBUTION';
+
+  @override
+  void initState() {
+    super.initState();
+    _latitude = TextEditingController(
+      text: widget.latitude.toStringAsFixed(6),
+    );
+    _longitude = TextEditingController(
+      text: widget.longitude.toStringAsFixed(6),
+    );
+  }
 
   @override
   void dispose() {
     _valveId.dispose();
     _wardId.dispose();
     _zoneId.dispose();
+    _latitude.dispose();
+    _longitude.dispose();
     super.dispose();
   }
 
@@ -38,33 +60,88 @@ class _ManualValveRegistrationDialogState
   Widget build(BuildContext context) {
     return AlertDialog(
       title: const Text('REGISTER BY VALVE ID'),
-      content: Form(
-        key: _formKey,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextFormField(
-              controller: _valveId,
-              decoration: const InputDecoration(
-                labelText: 'Valve ID',
-                hintText: 'e.g. ORB-VLV-00000001',
+      content: SingleChildScrollView(
+        child: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextFormField(
+                controller: _valveId,
+                decoration: const InputDecoration(
+                  labelText: 'Valve ID',
+                  hintText: 'e.g. ORB-VLV-00000001',
+                ),
+                validator: (value) => value == null || value.trim().isEmpty
+                    ? 'Enter Valve ID'
+                    : null,
               ),
-              validator: (value) =>
-                  value == null || value.trim().isEmpty ? 'Enter Valve ID' : null,
-            ),
-            TextFormField(
-              controller: _wardId,
-              decoration: const InputDecoration(labelText: 'Ward ID'),
-              validator: (value) =>
-                  value == null || value.trim().isEmpty ? 'Enter Ward ID' : null,
-            ),
-            TextFormField(
-              controller: _zoneId,
-              decoration: const InputDecoration(labelText: 'Zone ID'),
-              validator: (value) =>
-                  value == null || value.trim().isEmpty ? 'Enter Zone ID' : null,
-            ),
-          ],
+              const SizedBox(height: 8),
+              DropdownButtonFormField<String>(
+                initialValue: _valveType,
+                decoration: const InputDecoration(labelText: 'Valve Type'),
+                items: const [
+                  DropdownMenuItem(
+                    value: 'MAIN',
+                    child: Text('MAIN'),
+                  ),
+                  DropdownMenuItem(
+                    value: 'DISTRIBUTION',
+                    child: Text('DISTRIBUTION'),
+                  ),
+                ],
+                onChanged: (value) {
+                  if (value != null) setState(() => _valveType = value);
+                },
+              ),
+              const SizedBox(height: 8),
+              TextFormField(
+                controller: _wardId,
+                decoration: const InputDecoration(labelText: 'Ward ID'),
+                validator: (value) => value == null || value.trim().isEmpty
+                    ? 'Enter Ward ID'
+                    : null,
+              ),
+              const SizedBox(height: 8),
+              TextFormField(
+                controller: _zoneId,
+                decoration: const InputDecoration(labelText: 'Zone ID'),
+                validator: (value) => value == null || value.trim().isEmpty
+                    ? 'Enter Zone ID'
+                    : null,
+              ),
+              const SizedBox(height: 8),
+              TextFormField(
+                controller: _latitude,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                  signed: true,
+                ),
+                decoration: const InputDecoration(labelText: 'Latitude'),
+                validator: (value) {
+                  final n = double.tryParse(value?.trim() ?? '');
+                  return n == null || n < -90 || n > 90
+                      ? 'Enter valid latitude'
+                      : null;
+                },
+              ),
+              const SizedBox(height: 8),
+              TextFormField(
+                controller: _longitude,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                  signed: true,
+                ),
+                decoration: const InputDecoration(labelText: 'Longitude'),
+                validator: (value) {
+                  final n = double.tryParse(value?.trim() ?? '');
+                  return n == null || n < -180 || n > 180
+                      ? 'Enter valid longitude'
+                      : null;
+                },
+              ),
+            ],
+          ),
         ),
       ),
       actions: [
@@ -74,13 +151,15 @@ class _ManualValveRegistrationDialogState
         ),
         FilledButton(
           onPressed: () {
-            if (_formKey.currentState!.validate()) {
-              Navigator.pop(context, {
-                'valveId': _valveId.text,
-                'wardId': _wardId.text,
-                'zoneId': _zoneId.text,
-              });
-            }
+            if (!_formKey.currentState!.validate()) return;
+            Navigator.pop(context, {
+              'valveId': _valveId.text.trim(),
+              'wardId': _wardId.text.trim(),
+              'zoneId': _zoneId.text.trim(),
+              'valveType': _valveType,
+              'latitude': _latitude.text.trim(),
+              'longitude': _longitude.text.trim(),
+            });
           },
           child: const Text('REGISTER'),
         ),
@@ -477,14 +556,28 @@ class _MapScreenState extends State<MapScreen> {
 
     final values = await showDialog<Map<String, String>>(
       context: context,
-      builder: (context) => const _ManualValveRegistrationDialog(),
+      builder: (context) => _ManualValveRegistrationDialog(
+        latitude: _phoneLocation!.latitude,
+        longitude: _phoneLocation!.longitude,
+      ),
     );
     if (!mounted || values == null) return;
 
     final valveId = values['valveId']!.trim();
     final wardId = values['wardId']!.trim();
     final zoneId = values['zoneId']!.trim();
-    if (valveId.isEmpty || wardId.isEmpty || zoneId.isEmpty) return;
+    final valveType = values['valveType']?.trim() == 'MAIN'
+        ? 'MAIN'
+        : 'DISTRIBUTION';
+    final latitude = double.tryParse(values['latitude']!.trim());
+    final longitude = double.tryParse(values['longitude']!.trim());
+    if (valveId.isEmpty ||
+        wardId.isEmpty ||
+        zoneId.isEmpty ||
+        latitude == null ||
+        longitude == null) {
+      return;
+    }
 
     final prefs = await SharedPreferences.getInstance();
     final bearer = prefs.getString('municipal_access_token');
@@ -510,8 +603,8 @@ class _MapScreenState extends State<MapScreen> {
         valveId: valveId,
         wardId: wardId,
         zoneId: zoneId,
-        latitude: _phoneLocation!.latitude,
-        longitude: _phoneLocation!.longitude,
+        latitude: latitude,
+        longitude: longitude,
       );
 
       final item = _ValveMapItem(
@@ -521,6 +614,7 @@ class _MapScreenState extends State<MapScreen> {
         isGsm: false,
         ward: result['ward_id']?.toString() ?? wardId,
         zone: result['zone_id']?.toString() ?? zoneId,
+        valveType: valveType,
       );
 
       if (_valves.any(
@@ -786,9 +880,16 @@ class _MapScreenState extends State<MapScreen> {
                               .onSurfaceVariant,
                         ),
                       ),
-                      if (isSelected &&
-                          (valve.zone.isNotEmpty || valve.ward.isNotEmpty)) ...[
-                        const SizedBox(height: 4),
+                      Text(
+                        'Type: ${valve.valveType == 'MAIN' ? 'MAIN' : 'DISTRIBUTION'}',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                      ),
+                      if (valve.zone.isNotEmpty || valve.ward.isNotEmpty) ...[
+                        const SizedBox(height: 3),
                         Wrap(
                           spacing: 14,
                           runSpacing: 2,
@@ -812,6 +913,16 @@ class _MapScreenState extends State<MapScreen> {
                                 ),
                               ),
                           ],
+                        ),
+                      ],
+                      if (isSelected) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          'GPS: ${valve.latitude.toStringAsFixed(6)}, ${valve.longitude.toStringAsFixed(6)}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
                         ),
                       ],
                     ],
