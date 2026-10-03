@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 class ApkAccessGrant {
-  final String? id;
   final String phone;
   final String ward;
   final List<String> zones;
@@ -9,7 +8,6 @@ class ApkAccessGrant {
   final bool enabled;
 
   const ApkAccessGrant({
-    this.id,
     required this.phone,
     this.ward = '',
     required this.zones,
@@ -18,7 +16,6 @@ class ApkAccessGrant {
   });
 
   Map<String, dynamic> toJson() => {
-        if (id != null) 'id': id,
         'phone': phone,
         'ward': ward,
         'zones': List<String>.from(zones),
@@ -30,7 +27,6 @@ class ApkAccessGrant {
     final zones = json['zones'];
     final valves = json['valves'];
     return ApkAccessGrant(
-      id: json['id']?.toString(),
       phone: (json['phone'] ?? '').toString(),
       ward: (json['ward'] ?? '').toString(),
       zones: zones is List
