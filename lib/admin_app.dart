@@ -26,65 +26,6 @@ class AdminStore extends ChangeNotifier {
   ApkAccessSnapshot get apkAccessSnapshot =>
       ApkAccessSnapshot(grants: List<ApkAccessGrant>.unmodifiable(apkAccessGrants));
 
-  Future<void> loadApkAccessFromServer(ServerApiService api) async {
-    final grants = await api.listApkAccessGrants();
-    apkAccessGrants
-      ..clear()
-      ..addAll(grants);
-    notifyListeners();
-  }
-
-  Future<ApkAccessGrant> saveApkAccessToServer(
-    ServerApiService api, {
-    required String phone,
-    required String ward,
-    required List<String> zones,
-    required List<String> valves,
-    bool enabled = true,
-  }) async {
-    final saved = await api.upsertApkAccessGrant(
-      phone: phone,
-      ward: ward,
-      zones: zones,
-      valves: valves,
-      enabled: enabled,
-    );
-    apkAccessGrants.removeWhere((g) => g.phone.trim() == saved.phone.trim());
-    apkAccessGrants.add(saved);
-    notifyListeners();
-    return saved;
-  }
-
-  Future<void> setApkAccessEnabledOnServer(
-    ServerApiService api,
-    String grantId,
-    bool enabled,
-  ) async {
-    await api.setApkAccessEnabled(grantId: grantId, enabled: enabled);
-    final index = apkAccessGrants.indexWhere((g) => g.id == grantId);
-    if (index >= 0) {
-      final current = apkAccessGrants[index];
-      apkAccessGrants[index] = ApkAccessGrant(
-        id: current.id,
-        phone: current.phone,
-        ward: current.ward,
-        zones: List<String>.from(current.zones),
-        valves: List<String>.from(current.valves),
-        enabled: enabled,
-      );
-      notifyListeners();
-    }
-  }
-
-  Future<void> removeApkAccessFromServer(
-    ServerApiService api,
-    String grantId,
-  ) async {
-    await api.deleteApkAccessGrant(grantId);
-    apkAccessGrants.removeWhere((g) => g.id == grantId);
-    notifyListeners();
-  }
-
   void addApkAccessGrant({
     required String phone,
     required List<String> zones,
