@@ -1,28 +1,43 @@
 import 'dart:convert';
 
 class ApkAccessGrant {
+  final String? id;
   final String phone;
+  final String ward;
   final List<String> zones;
+  final List<String> valves;
   final bool enabled;
 
   const ApkAccessGrant({
+    this.id,
     required this.phone,
+    this.ward = '',
     required this.zones,
+    this.valves = const [],
     required this.enabled,
   });
 
   Map<String, dynamic> toJson() => {
+        if (id != null) 'id': id,
         'phone': phone,
+        'ward': ward,
         'zones': List<String>.from(zones),
+        'valves': List<String>.from(valves),
         'enabled': enabled,
       };
 
   factory ApkAccessGrant.fromJson(Map<String, dynamic> json) {
     final zones = json['zones'];
+    final valves = json['valves'];
     return ApkAccessGrant(
+      id: json['id']?.toString(),
       phone: (json['phone'] ?? '').toString(),
+      ward: (json['ward'] ?? '').toString(),
       zones: zones is List
           ? zones.map((e) => e.toString()).toList(growable: false)
+          : const [],
+      valves: valves is List
+          ? valves.map((e) => e.toString()).toList(growable: false)
           : const [],
       enabled: json['enabled'] == true,
     );
