@@ -17,53 +17,6 @@ class ServerApiService {
           'Authorization': 'Bearer $bearerToken',
       };
 
-  Future<List<ApkAccessGrant>> listApkAccessGrants() async {
-    final response = await _get('/api/v1/scada/apk-access/grants');
-    final data = response['data'];
-    if (data is List) {
-      return data
-          .whereType<Map>()
-          .map((item) => ApkAccessGrant.fromJson(Map<String, dynamic>.from(item)))
-          .toList(growable: false);
-    }
-    return const [];
-  }
-
-  Future<ApkAccessGrant> upsertApkAccessGrant({
-    required String phone,
-    required String ward,
-    required List<String> zones,
-    required List<String> valves,
-    bool enabled = true,
-  }) async {
-    final response = await _post(
-      '/api/v1/scada/apk-access/grants',
-      {
-        'phone': phone,
-        'ward': ward,
-        'zones': zones,
-        'valves': valves,
-        'enabled': enabled,
-      },
-    );
-    return ApkAccessGrant.fromJson(response);
-  }
-
-  Future<void> setApkAccessEnabled({
-    required String grantId,
-    required bool enabled,
-  }) async {
-    final encoded = Uri.encodeComponent(grantId);
-    await _patch(
-      '/api/v1/scada/apk-access/grants/$encoded/enabled?enabled=$enabled',
-    );
-  }
-
-  Future<void> deleteApkAccessGrant(String grantId) async {
-    final encoded = Uri.encodeComponent(grantId);
-    await _delete('/api/v1/scada/apk-access/grants/$encoded');
-  }
-
   Future<Map<String, dynamic>> registerValveById({
     required String valveId,
     required String wardId,
@@ -180,27 +133,6 @@ class ServerApiService {
         if (description != null) 'description': description,
       },
     );
-  }
-
-  Future<Map<String, dynamic>> _patch(String path) async {
-    final response = await http.patch(Uri.parse('$baseUrl$path'), headers: _headers);
-    return _decode(response);
-  }
-
-  Future<void> _delete(String path) async {
-    final response = await http.delete(Uri.parse('$baseUrl$path'), headers: _headers);
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      dynamic decoded;
-      try {
-        decoded = jsonDecode(response.body);
-      } catch (_) {
-        decoded = {'raw': response.body};
-      }
-      throw ServerApiException(
-        response.statusCode,
-        decoded is Map<String, dynamic> ? decoded : {'body': decoded},
-      );
-    }
   }
 
   Future<Map<String, dynamic>> _get(String path) async {
