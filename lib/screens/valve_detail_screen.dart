@@ -16,8 +16,13 @@ class ValveDetailScreen extends StatefulWidget {
 }
 
 class _ValveDetailScreenState extends State<ValveDetailScreen> {
-  final List<String> valveIds = const ['ORBI-001'];
-  String selectedValveId = 'ORBI-001';
+  static const configuredValveId = String.fromEnvironment(
+    'VALVE_ID',
+    defaultValue: 'VALVE-001',
+  );
+
+  final List<String> valveIds = const [configuredValveId];
+  String selectedValveId = configuredValveId;
 
   int selectedPosition = 0;
   int requestedPosition = 0;
@@ -43,7 +48,7 @@ class _ValveDetailScreenState extends State<ValveDetailScreen> {
   StreamSubscription<ValveData>? statusSubscription;
 
   ValveData valveData = const ValveData(
-    valveId: 'ORBI-001',
+    valveId: configuredValveId,
     status: 'STOPPED',
     requested: 0,
     actual: 0,
