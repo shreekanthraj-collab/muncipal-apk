@@ -2,6 +2,8 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import 'apk_access_contract.dart';
+
 class ServerApiService {
   final String baseUrl;
   String? bearerToken;
@@ -34,6 +36,28 @@ class ServerApiService {
         'longitude': longitude,
       },
     );
+  }
+
+  Future<List<ApkAccessGrant>> getApkAccessGrants() async {
+    final response =
+        await _get('/api/v1/scada/apk-access/grants');
+
+    final raw = response['data'];
+
+    if (raw is! List) {
+      throw const FormatException(
+        'Invalid APK access grants response',
+      );
+    }
+
+    return raw
+        .whereType<Map>()
+        .map(
+          (item) => ApkAccessGrant.fromJson(
+            Map<String, dynamic>.from(item),
+          ),
+        )
+        .toList(growable: false);
   }
 
   Future<Map<String, dynamic>> getBillingSummary({
