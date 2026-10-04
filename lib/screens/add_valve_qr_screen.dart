@@ -118,7 +118,23 @@ class _AddValveQrScreenState extends State<AddValveQrScreen> {
         throw Exception('Valve registration rejected (${register.statusCode})');
       }
 
-      final saved = jsonDecode(register.body) as Map<String, dynamic>;
+      final rawSaved = jsonDecode(register.body) as Map<String, dynamic>;
+
+      // Normalize the server's asset_bundle response to the existing
+      // screen contract without changing the UI or registration flow.
+      final assetBundle = rawSaved['asset_bundle'] is Map
+          ? Map<String, dynamic>.from(rawSaved['asset_bundle'] as Map)
+          : <String, dynamic>{};
+      final saved = <String, dynamic>{
+        ...rawSaved,
+        if (assetBundle['valve'] is Map) 'valve': assetBundle['valve'],
+        if (assetBundle['actuator'] is Map) 'actuator': assetBundle['actuator'],
+        if (assetBundle['sim'] is Map) 'sim': assetBundle['sim'],
+        if (assetBundle['aws_thing'] is Map) 'aws_thing': assetBundle['aws_thing'],
+        if (assetBundle['registration_token'] is Map) 'registration_token': assetBundle['registration_token'],
+        if (assetBundle['billing'] is Map) 'billing': assetBundle['billing'],
+      };
+
       if (!mounted) return;
       await showDialog<void>(
         context: context,
