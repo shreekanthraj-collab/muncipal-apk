@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../models/valve_data.dart';
 import '../models/valve_command.dart';
 import '../services/aws_service.dart';
+import '../services/server_api_service.dart';
 
 class ValveDetailScreen extends StatefulWidget {
   const ValveDetailScreen({super.key});
@@ -31,7 +32,14 @@ class _ValveDetailScreenState extends State<ValveDetailScreen> {
   bool voltageBypass = false;
 
   Timer? movementTimer;
+  static const serverBaseUrl = String.fromEnvironment(
+    'SERVER_BASE_URL',
+    defaultValue: 'http://10.255.213.175:8000',
+  );
+  static const apkPhone = String.fromEnvironment('APK_PHONE');
+
   late final AwsService awsService;
+  late final ServerApiService serverApi;
   StreamSubscription<ValveData>? statusSubscription;
 
   ValveData valveData = const ValveData(
@@ -57,13 +65,32 @@ class _ValveDetailScreenState extends State<ValveDetailScreen> {
     );
 
     setState(() {
-      lastCommandJson = const JsonEncoder.withIndent('  ').convert(packet.toJson());
+      lastCommandJson =
+          const JsonEncoder.withIndent('  ').convert(packet.toJson());
     });
 
-    if (!awsService.connected) return;
+    if (apkPhone.isEmpty) {
+      debugPrint('$command not sent: APK_PHONE is not configured');
+      return;
+    }
 
     try {
-      await awsService.sendCommand(packet);
+      await serverApi.sendValveCommand(
+        valveId: packet.valveId,
+        command: packet.command,
+        value: packet.value,
+        year: packet.year,
+        month: packet.month,
+        day: packet.day,
+        hour: packet.hour,
+        minute: packet.minute,
+        second: packet.second,
+        wday: packet.wday,
+        slot: packet.slot,
+        enabled: packet.enabled,
+        action: packet.action,
+        days: packet.days,
+      );
     } catch (error) {
       debugPrint('$command failed: $error');
     }
@@ -237,6 +264,11 @@ class _ValveDetailScreenState extends State<ValveDetailScreen> {
   @override
   void initState() {
     super.initState();
+    serverApi = ServerApiService(
+      baseUrl: serverBaseUrl,
+      apkPhone: apkPhone,
+    );
+
     awsService = AwsService(
       host: 'YOUR_AWS_IOT_ENDPOINT',
       clientId: 'ORBI-APP',
