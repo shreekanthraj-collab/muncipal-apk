@@ -7,16 +7,20 @@ import 'apk_access_contract.dart';
 class ServerApiService {
   final String baseUrl;
   String? bearerToken;
+  String? apkPhone;
 
   ServerApiService({
     required this.baseUrl,
     this.bearerToken,
+    this.apkPhone,
   });
 
   Map<String, String> get _headers => {
         'Content-Type': 'application/json',
         if (bearerToken != null && bearerToken!.isNotEmpty)
           'Authorization': 'Bearer $bearerToken',
+        if (apkPhone != null && apkPhone!.isNotEmpty)
+          'X-APK-Phone': apkPhone!,
       };
 
   Future<Map<String, dynamic>> registerValveById({
@@ -58,6 +62,43 @@ class ServerApiService {
           ),
         )
         .toList(growable: false);
+  }
+
+  Future<Map<String, dynamic>> sendValveCommand({
+    required String valveId,
+    required String command,
+    int value = 0,
+    int? year,
+    int? month,
+    int? day,
+    int? hour,
+    int? minute,
+    int? second,
+    int? wday,
+    int? slot,
+    int? enabled,
+    int? action,
+    int? days,
+  }) {
+    return _post(
+      '/api/v1/municipal/valves/$valveId/command',
+      {
+        'valve_id': valveId,
+        'command': command,
+        'value': value,
+        if (year != null) 'year': year,
+        if (month != null) 'month': month,
+        if (day != null) 'day': day,
+        if (hour != null) 'hour': hour,
+        if (minute != null) 'minute': minute,
+        if (second != null) 'second': second,
+        if (wday != null) 'wday': wday,
+        if (slot != null) 'slot': slot,
+        if (enabled != null) 'enabled': enabled,
+        if (action != null) 'action': action,
+        if (days != null) 'days': days,
+      },
+    );
   }
 
   Future<Map<String, dynamic>> getBillingSummary({
