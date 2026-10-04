@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'home_screen.dart';
 
@@ -19,7 +20,19 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  void login() {
+  Future<void> login() async {
+    // Provision an existing municipal session for server communication.
+    // This keeps the existing login UI and navigation unchanged.
+    const accessToken = String.fromEnvironment('ORB_MUNICIPAL_ACCESS_TOKEN');
+    const operatorId = String.fromEnvironment('ORB_MUNICIPAL_OPERATOR_ID');
+
+    if (accessToken.isNotEmpty && operatorId.isNotEmpty) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('municipal_access_token', accessToken);
+      await prefs.setString('municipal_operator_id', operatorId);
+    }
+
+    if (!mounted) return;
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(builder: (_) => const HomeScreen()),
     );
