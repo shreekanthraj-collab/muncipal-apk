@@ -18,6 +18,8 @@ class AdminStore extends ChangeNotifier {
     Valve('LoRa-002', 'LoRa'),
   ];
   final List<ApkAccessGrant> apkAccessGrants = [];
+  final List<ServerMessage> serverMessages = [];
+  String? bearerToken;
   String zone = 'Zone 01', ward = 'Ward 01';
 
   Valve? get(String id) =>
@@ -26,18 +28,86 @@ class AdminStore extends ChangeNotifier {
   ApkAccessSnapshot get apkAccessSnapshot =>
       ApkAccessSnapshot(grants: List<ApkAccessGrant>.unmodifiable(apkAccessGrants));
 
+  ServerApiService get server => ServerApiService(
+        baseUrl: 'http://127.0.0.1:8000',
+        bearerToken: bearerToken,
+      );
+
+  Future<void> setSession(String token) async {
+    bearerToken = token;
+    await loadServerData();
+  }
+
+  Future<void> loadServerData() async {
+    if (bearerToken == null || bearerToken!.isEmpty) return;
+    try {
+      final results = await Future.wait([
+        server.getMunicipalMessages(),
+        server.getRegisteredMunicipalValves(),
+      ]);
+      serverMessages
+        ..clear()
+        ..addAll(results[0] as List<ServerMessage>);
+
+      final registry = results[1] as List<Map<String, dynamic>>;
+      final serverWards = registry
+          .map((v) => (v['ward'] ?? '').toString())
+          .where((v) => v.isNotEmpty)
+          .toSet();
+      final serverZones = registry
+          .map((v) => (v['zone'] ?? '').toString())
+          .where((v) => v.isNotEmpty)
+          .toSet();
+      if (serverWards.isNotEmpty) {
+        wards
+          ..clear()
+          ..addAll(serverWards);
+        ward = wards.first;
+      }
+      if (serverZones.isNotEmpty) {
+        zones
+          ..clear()
+          ..addAll(serverZones);
+        zone = zones.first;
+      }
+      notifyListeners();
+    } catch (_) {
+      notifyListeners();
+    }
+  }
+
   Future<void> loadApkAccessGrants() async {
-    final service = ServerApiService(
-      baseUrl: 'http://127.0.0.1:8000',
-    );
+    if (bearerToken == null || bearerToken!.isEmpty) return;
+    try {
+      final grants = await server.getApkAccessGrants();
+      apkAccessGrants
+        ..clear()
+        ..addAll(grants);
+      notifyListeners();
+    } catch (_) {
+      notifyListeners();
+    }
+  }
 
-    final grants = await service.getApkAccessGrants();
-
-    apkAccessGrants
-      ..clear()
-      ..addAll(grants);
-
-    notifyListeners();
+  Future<void> acknowledgeMessage(String id) async {
+    if (bearerToken == null) return;
+    await server.acknowledgeMunicipalMessage(id);
+    final index = serverMessages.indexWhere((m) => m.id == id);
+    if (index >= 0) {
+      final old = serverMessages[index];
+      serverMessages[index] = ServerMessage(
+        id: old.id,
+        title: old.title,
+        message: old.message,
+        type: old.type,
+        priority: old.priority,
+        createdAt: old.createdAt,
+        activeUntil: old.activeUntil,
+        isRead: true,
+        isAcknowledged: true,
+      );
+      notifyListeners();
+    }
   }
 
   void addApkAccessGrant({
@@ -88,10 +158,118 @@ final store=AdminStore();
 class AdminValveApp extends StatelessWidget { const AdminValveApp({super.key}); @override Widget build(BuildContext c)=>MaterialApp(debugShowCheckedModeBanner:false,title:'Smart Valve Management',theme:ThemeData(useMaterial3:true,colorScheme:ColorScheme.fromSeed(seedColor:blue)),home:const LoginPage()); }
 class Info extends StatelessWidget{const Info({super.key,required this.icon,required this.title,required this.text});final IconData icon;final String title,text;@override Widget build(BuildContext c)=>Container(width:double.infinity,padding:const EdgeInsets.all(11),decoration:BoxDecoration(color:lightBlue,borderRadius:BorderRadius.circular(10)),child:Row(children:[Icon(icon,color:Colors.blue),const SizedBox(width:10),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text(title,style:const TextStyle(fontWeight:FontWeight.w800,color:Color(0xFF10296B))),Text(text)]))]));}
 class LoginPage extends StatefulWidget{const LoginPage({super.key});@override State<LoginPage> createState()=>_LoginPageState();}
-class _LoginPageState extends State<LoginPage>{bool admin=true,hide=true;final pw=TextEditingController();@override void dispose(){pw.dispose();super.dispose();}@override Widget build(BuildContext c)=>Scaffold(body:SafeArea(child:SingleChildScrollView(padding:const EdgeInsets.all(20),child:Column(children:[const Icon(Icons.water_drop,size:76,color:Color(0xFF1680EF)),const SizedBox(height:8),const Text('Smart Valve Management',style:TextStyle(fontSize:28,fontWeight:FontWeight.w800,color:Color(0xFF10296B))),const Text('Monitor  •  Control  •  Manage',style:TextStyle(fontSize:17,color:Color(0xFF536B91))),const SizedBox(height:22),Card(child:Padding(padding:const EdgeInsets.all(18),child:Column(children:[const Text('Login',style:TextStyle(fontSize:30,fontWeight:FontWeight.w800,color:Color(0xFF10296B))),const Text('Select your role to continue'),const SizedBox(height:18),SegmentedButton<bool>(segments:const[ButtonSegment(value:true,label:Text('Admin'),icon:Icon(Icons.admin_panel_settings)),ButtonSegment(value:false,label:Text('Agent / Operator'),icon:Icon(Icons.groups))],selected:{admin},onSelectionChanged:(s)=>setState(()=>admin=s.first)),const SizedBox(height:18),TextField(controller:pw,obscureText:hide,decoration:InputDecoration(labelText:'Password',prefixIcon:const Icon(Icons.lock),suffixIcon:IconButton(icon:const Icon(Icons.visibility),onPressed:()=>setState(()=>hide=!hide)))),Align(alignment:Alignment.centerRight,child:TextButton(onPressed:()=>forgotPassword(c),child:const Text('Forgot Password?'))),SizedBox(width:double.infinity,height:52,child:FilledButton(onPressed:()=>Navigator.pushReplacement(c,MaterialPageRoute(builder:(_)=>const AdminShell())),child:const Text('LOGIN'))),const SizedBox(height:14),const Info(icon:Icons.verified_user,title:'Authentication Required',text:'Authentication will be sent to your registered mobile number.'),const SizedBox(height:8),const Info(icon:Icons.phone_android,title:'Mobile Number Change',text:'If app mobile number changes / phone changes, re-authentication is required.'),const SizedBox(height:8),const Info(icon:Icons.info,title:'Phone Support',text:'App should support phone with mobile number.')]))),const SizedBox(height:18),const Text('Smart Water. Smart Cities. Better Tomorrow.',style:TextStyle(color:blue,fontWeight:FontWeight.w700))]))));}
-void forgotPassword(BuildContext c){final x=TextEditingController();showDialog(context:c,builder:(_)=>AlertDialog(title:const Text('Reset Password'),content:TextField(controller:x,keyboardType:TextInputType.phone,decoration:const InputDecoration(labelText:'Mobile Number')),actions:[TextButton(onPressed:()=>Navigator.pop(c),child:const Text('CANCEL')),FilledButton(onPressed:(){Navigator.pop(c);ScaffoldMessenger.of(c).showSnackBar(const SnackBar(content:Text('Authentication code requested')));},child:const Text('SEND OTP'))])).then((_){x.dispose();});}
+class _LoginPageState extends State<LoginPage>{
+  bool admin=true, busy=false;
+  final phone=TextEditingController();
+
+  @override void dispose(){phone.dispose();super.dispose();}
+
+  Future<void> _login(BuildContext context) async {
+    final p=phone.text.trim();
+    if (p.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Enter registered mobile number')));
+      return;
+    }
+    setState(()=>busy=true);
+    try {
+      final api=ServerApiService(baseUrl:'http://127.0.0.1:8000');
+      final requested=await api.requestMunicipalOtp(phone:p);
+      if (!context.mounted) return;
+      final otp=TextEditingController();
+      final code=await showDialog<String>(
+        context:context,
+        builder:(_)=>AlertDialog(
+          title:const Text('Verify OTP'),
+          content:Column(mainAxisSize:MainAxisSize.min,children:[
+            Text('OTP requested. Expires in ${requested['expires_in_seconds'] ?? 300} seconds.'),
+            const SizedBox(height:12),
+            TextField(controller:otp,keyboardType:TextInputType.number,maxLength:6,decoration:const InputDecoration(labelText:'OTP')),
+          ]),
+          actions:[
+            TextButton(onPressed:()=>Navigator.pop(context),child:const Text('CANCEL')),
+            FilledButton(onPressed:()=>Navigator.pop(context,otp.text.trim()),child:const Text('VERIFY')),
+          ],
+        ),
+      );
+      otp.dispose();
+      if (code==null || code.isEmpty) return;
+      final session=await api.verifyMunicipalOtp(phone:p,otp:code);
+      final token=(session['access_token'] ?? '').toString();
+      if (token.isEmpty) throw const FormatException('Server did not return an access token');
+      await store.setSession(token);
+      await store.loadApkAccessGrants();
+      if (!context.mounted) return;
+      Navigator.pushReplacement(context,MaterialPageRoute(builder:(_)=>const AdminShell()));
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('Server login failed: $e')));
+      }
+    } finally {
+      if (mounted) setState(()=>busy=false);
+    }
+  }
+
+  @override Widget build(BuildContext c)=>Scaffold(body:SafeArea(child:SingleChildScrollView(padding:const EdgeInsets.all(20),child:Column(children:[
+const Icon(Icons.water_drop,size:76,color:Color(0xFF1680EF)),
+const SizedBox(height:8),
+const Text('Smart Valve Management',style:TextStyle(fontSize:28,fontWeight:FontWeight.w800,color:Color(0xFF10296B))),
+const Text('Monitor  •  Control  •  Manage',style:TextStyle(fontSize:17,color:Color(0xFF536B91))),
+const SizedBox(height:22),
+Card(child:Padding(padding:const EdgeInsets.all(18),child:Column(children:[
+const Text('Server Login',style:TextStyle(fontSize:30,fontWeight:FontWeight.w800,color:Color(0xFF10296B))),
+const Text('Use the registered municipal operator phone number'),
+const SizedBox(height:18),
+SegmentedButton<bool>(segments:const[
+ButtonSegment(value:true,label:Text('Admin'),icon:Icon(Icons.admin_panel_settings)),
+ButtonSegment(value:false,label:Text('Agent / Operator'),icon:Icon(Icons.groups))
+],selected:{admin},onSelectionChanged:(s)=>setState(()=>admin=s.first)),
+const SizedBox(height:18),
+TextField(controller:phone,keyboardType:TextInputType.phone,decoration:const InputDecoration(labelText:'Registered mobile number',prefixIcon:Icon(Icons.phone))),
+const SizedBox(height:18),
+SizedBox(width:double.infinity,height:52,child:FilledButton(
+onPressed:busy?null:()=>_login(c),
+child:Text(busy?'CONTACTING SERVER...':'REQUEST OTP'))),
+const SizedBox(height:14),
+const Info(icon:Icons.verified_user,title:'Server Authentication',text:'OTP is verified by ORB-DRIVE-SERVER. Access is limited by the operator role, ward and zone scope.'),
+const SizedBox(height:8),
+const Info(icon:Icons.notifications_active,title:'Company Messages',text:'Recharge due, maintenance and other company notices are delivered from the server.'),
+const SizedBox(height:8),
+const Info(icon:Icons.info,title:'Server Source of Truth',text:'Ward, zone and registered valve data are loaded from the municipal server after login.')
+]))),
+const SizedBox(height:18),
+const Text('Smart Water. Smart Cities. Better Tomorrow.',style:TextStyle(color:blue,fontWeight:FontWeight.w700))
+]))));}
 class AdminShell extends StatefulWidget{const AdminShell({super.key});@override State<AdminShell> createState()=>_AdminShellState();}
 class _AdminShellState extends State<AdminShell>{int index=0;@override void initState(){super.initState();store.loadApkAccessGrants();}@override Widget build(BuildContext c){final pages=[HomePage(go:(i)=>setState(()=>index=i)),const ValvePage(type:'GSM'),const ValvePage(type:'LoRa'),const MapPage(),const Rs485Page()];return Scaffold(body:pages[index],bottomNavigationBar:NavigationBar(selectedIndex:index,onDestinationSelected:(i)=>setState(()=>index=i),destinations:const[NavigationDestination(icon:Icon(Icons.home),label:'Home'),NavigationDestination(icon:Icon(Icons.cell_tower),label:'GSM'),NavigationDestination(icon:Icon(Icons.cell_tower),label:'LoRa'),NavigationDestination(icon:Icon(Icons.map),label:'MAP'),NavigationDestination(icon:Icon(Icons.account_tree),label:'RS485')]));}}
 class Header extends StatelessWidget{const Header(this.title,{super.key});final String title;@override Widget build(BuildContext c)=>Container(color:blue,padding:EdgeInsets.only(top:MediaQuery.paddingOf(c).top+5,bottom:8),child:Row(children:[IconButton(onPressed:()=>Navigator.maybePop(c),icon:const Icon(Icons.arrow_back,color:Colors.white)),Expanded(child:Text(title,textAlign:TextAlign.center,style:const TextStyle(color:Colors.white,fontSize:20,fontWeight:FontWeight.w800))),const SizedBox(width:48,child:Icon(Icons.more_vert,color:Colors.white))]));}
-class HomePage extends StatelessWidget{const HomePage({super.key,required this.go});final ValueChanged<int> go;@override Widget build(BuildContext c)=>AnimatedBuilder(animation:store,builder:(_,__)=>SafeArea(top:false,child:Column(children:[Container(color:blue,padding:EdgeInsets.only(top:MediaQuery.paddingOf(c).top+8,left:15,right:10,bottom:14),child:const Row(children:[Icon(Icons.water_drop,color:Colors.white,size:42),SizedBox(width:10),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text('Smart Valve Management',style:TextStyle(color:Colors.white,fontSize:22,fontWeight:FontWeight.w800)),Text('Monitor  •  Control  •  Manage',style:TextStyle(color:Colors.white70))])),Icon(Icons.more_vert,color:Colors.white)])),Expanded(child:SingleChildScrollView(padding:const EdgeInsets.all(15),child:Card(child:Padding(padding:const EdgeInsets.all(15),child:Column(children:[const Text('Select Zone and Ward',style:TextStyle(fontSize:26,fontWeight:FontWeight.w800,color:Color(0xFF10296B))),const Text('Choose zone and ward to view valve information'),const SizedBox(height:18),_drop('Zone No',store.zones,store.zone,(v){store.zone=v!;store.notifyListeners();}),const SizedBox(height:12),_drop('Ward No',store.wards,store.ward,(v){store.ward=v!;store.notifyListeners();}),const SizedBox(height:8),Row(children:[Expanded(child:OutlinedButton.icon(onPressed:()=>_add(c,'Zone'),icon:const Icon(Icons.add),label:const Text('ADD ZONE'))),const SizedBox(width:8),Expanded(child:OutlinedButton.icon(onPressed:()=>_add(c,'Ward'),icon:const Icon(Icons.add),label:const Text('ADD WARD')))]),const SizedBox(height:16),GridView.count(shrinkWrap:true,physics:const NeverScrollableScrollPhysics(),crossAxisCount:2,mainAxisSpacing:10,crossAxisSpacing:10,childAspectRatio:1.55,children:[_b('GSM / LTE\nValve View',Icons.cell_tower,Colors.blue,()=>go(1)),_b('LoRa\nValve View',Icons.cell_tower,purple,()=>go(2)),_b('MAP View',Icons.map,Colors.green,()=>go(3)),_b('RS485 View',Icons.account_tree,Colors.orange,()=>go(4))]),const SizedBox(height:12),const Info(icon:Icons.info,title:'Navigation',text:'Select Zone and Ward to navigate to GSM, LoRa, MAP or RS485 view.')])))))])));
+class HomePage extends StatelessWidget{const HomePage({super.key,required this.go});final ValueChanged<int> go;@override Widget build(BuildContext c)=>AnimatedBuilder(animation:store,builder:(_,__)=>SafeArea(top:false,child:Column(children:[Container(color:blue,padding:EdgeInsets.only(top:MediaQuery.paddingOf(c).top+8,left:15,right:10,bottom:14),child:const Row(children:[Icon(Icons.water_drop,color:Colors.white,size:42),SizedBox(width:10),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text('Smart Valve Management',style:TextStyle(color:Colors.white,fontSize:22,fontWeight:FontWeight.w800)),Text('Monitor  •  Control  •  Manage',style:TextStyle(color:Colors.white70))])),Icon(Icons.more_vert,color:Colors.white)])),Expanded(child:SingleChildScrollView(padding:const EdgeInsets.all(15),child:Column(children:[_messagesCard(c),Card(child:Padding(padding:const EdgeInsets.all(15),child:Column(children:[const Text('Select Zone and Ward',style:TextStyle(fontSize:26,fontWeight:FontWeight.w800,color:Color(0xFF10296B))),const Text('Choose zone and ward to view valve information'),const SizedBox(height:18),_drop('Zone No',store.zones,store.zone,(v){store.zone=v!;store.notifyListeners();}),const SizedBox(height:12),_drop('Ward No',store.wards,store.ward,(v){store.ward=v!;store.notifyListeners();}),const SizedBox(height:8),Row(children:[Expanded(child:OutlinedButton.icon(onPressed:()=>_add(c,'Zone'),icon:const Icon(Icons.add),label:const Text('ADD ZONE'))),const SizedBox(width:8),Expanded(child:OutlinedButton.icon(onPressed:()=>_add(c,'Ward'),icon:const Icon(Icons.add),label:const Text('ADD WARD')))]),const SizedBox(height:16),GridView.count(shrinkWrap:true,physics:const NeverScrollableScrollPhysics(),crossAxisCount:2,mainAxisSpacing:10,crossAxisSpacing:10,childAspectRatio:1.55,children:[_b('GSM / LTE\nValve View',Icons.cell_tower,Colors.blue,()=>go(1)),_b('LoRa\nValve View',Icons.cell_tower,purple,()=>go(2)),_b('MAP View',Icons.map,Colors.green,()=>go(3)),_b('RS485 View',Icons.account_tree,Colors.orange,()=>go(4))]),const SizedBox(height:12),const Info(icon:Icons.info,title:'Navigation',text:'Select Zone and Ward to navigate to GSM, LoRa, MAP or RS485 view.')]))))])));
+Widget _messagesCard(BuildContext c)=>Card(
+  child:Padding(
+    padding:const EdgeInsets.all(14),
+    child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+      Row(children:[
+        const Icon(Icons.campaign,color:blue),
+        const SizedBox(width:8),
+        const Expanded(child:Text('COMPANY MESSAGES',style:TextStyle(fontSize:18,fontWeight:FontWeight.w800))),
+        IconButton(onPressed:store.bearerToken==null?null:()=>store.loadServerData(),icon:const Icon(Icons.refresh)),
+      ]),
+      if(store.serverMessages.isEmpty)
+        const Padding(padding:EdgeInsets.symmetric(vertical:10),child:Text('No active company messages from server.'))
+      else
+        ...store.serverMessages.map((m)=>Card(
+          margin:const EdgeInsets.only(top:8),
+          child:ListTile(
+            leading:Icon(m.priority=='URGENT'||m.priority=='HIGH'?Icons.warning_amber:Icons.notifications),
+            title:Text(m.title,style:const TextStyle(fontWeight:FontWeight.w700)),
+            subtitle:Text(m.message),
+            trailing:m.isAcknowledged?const Icon(Icons.check_circle):TextButton(
+              onPressed:()=>store.acknowledgeMessage(m.id),
+              child:const Text('ACK'),
+            ),
+          ),
+        )),
+    ]),
+  ),
+);
+
 Widget _drop(String l,List<String> x,String v,ValueChanged<String?> f)=>DropdownButtonFormField<String>(initialValue:v,decoration:InputDecoration(labelText:l,prefixIcon:Icon(l.startsWith('Zone')?Icons.location_on:Icons.business)),items:x.map((e)=>DropdownMenuItem(value:e,child:Text(e))).toList(),onChanged:f);Widget _b(String t,IconData i,Color col,VoidCallback f)=>FilledButton.icon(style:FilledButton.styleFrom(backgroundColor:col),onPressed:f,icon:Icon(i,size:30),label:Text(t,textAlign:TextAlign.center));Future<void> _add(BuildContext c,String kind)async{final x=TextEditingController();await showDialog(context:c,builder:(_)=>AlertDialog(title:Text('Add $kind'),content:TextField(controller:x,decoration:InputDecoration(labelText:'$kind No')),actions:[TextButton(onPressed:()=>Navigator.pop(c),child:const Text('CANCEL')),FilledButton(onPressed:(){kind=='Zone'?store.addZone(x.text):store.addWard(x.text);Navigator.pop(c);},child:const Text('ADD'))]));x.dispose();}}
