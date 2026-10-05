@@ -12,7 +12,7 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  String role = 'Admin';
+  String role = 'Agent / Operator';
   final passwordController = TextEditingController();
   final phoneController = TextEditingController();
   final otpController = TextEditingController();
