@@ -75,7 +75,7 @@ class _AddValveQrScreenState extends State<AddValveQrScreen> {
                   'ward_id': w,
                   'zone_id': z,
                   'valve_type': valveType,
-                  'oht_id': o.isEmpty ? null : o,
+                  if (o.isNotEmpty) 'oht_id': o,
                 });
               },
               child: const Text('REGISTER'),
