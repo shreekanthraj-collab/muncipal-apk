@@ -159,6 +159,25 @@ class ServerApiService {
     );
   }
 
+  Future<Map<String, dynamic>> requestMunicipalOtp({
+    required String phone,
+  }) {
+    return _post(
+      '/api/v1/municipal/auth/request-otp',
+      {'phone': phone},
+    );
+  }
+
+  Future<Map<String, dynamic>> verifyMunicipalOtp({
+    required String phone,
+    required String otp,
+  }) {
+    return _post(
+      '/api/v1/municipal/auth/verify-otp',
+      {'phone': phone, 'otp': otp},
+    );
+  }
+
   Future<Map<String, dynamic>> _get(String path) async {
     final response = await http.get(Uri.parse('$baseUrl$path'), headers: _headers);
     return _decode(response);
