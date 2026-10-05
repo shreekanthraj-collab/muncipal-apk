@@ -198,6 +198,7 @@ class _ValveMapItem {
     required this.zone,
     required this.ward,
     this.valveType = 'DISTRIBUTION',
+    this.ohtId,
   });
 
   final String id;
@@ -207,6 +208,7 @@ class _ValveMapItem {
   final String zone;
   final String ward;
   final String valveType;
+  final String? ohtId;
 
   Map<String, dynamic> toJson() => {
         'id': id,
@@ -216,6 +218,7 @@ class _ValveMapItem {
         'zone': zone,
         'ward': ward,
         'valveType': valveType,
+        if (ohtId != null && ohtId!.isNotEmpty) 'ohtId': ohtId,
       };
 
   factory _ValveMapItem.fromJson(Map<String, dynamic> json) {
@@ -228,6 +231,7 @@ class _ValveMapItem {
       zone: json['zone']?.toString() ?? '',
       ward: json['ward']?.toString() ?? '',
       valveType: json['valveType']?.toString() == 'MAIN' ? 'MAIN' : 'DISTRIBUTION',
+      ohtId: json['ohtId']?.toString(),
     );
   }
 }
