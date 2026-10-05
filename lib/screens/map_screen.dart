@@ -758,6 +758,7 @@ class _MapScreenState extends State<MapScreen> {
       ward: result['ward']?.toString() ?? '',
       zone: result['zone']?.toString() ?? '',
       valveType: result['valveType']?.toString() ?? 'DISTRIBUTION',
+      ohtId: result['ohtId']?.toString(),
     );
 
     if (_valves.any(
