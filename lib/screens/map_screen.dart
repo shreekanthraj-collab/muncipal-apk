@@ -602,13 +602,15 @@ class _MapScreenState extends State<MapScreen> {
     final valveType = values['valveType']?.trim() == 'MAIN'
         ? 'MAIN'
         : 'DISTRIBUTION';
+    final ohtId = values['ohtId']?.trim();
     final latitude = double.tryParse(values['latitude']!.trim());
     final longitude = double.tryParse(values['longitude']!.trim());
     if (valveId.isEmpty ||
         wardId.isEmpty ||
         zoneId.isEmpty ||
         latitude == null ||
-        longitude == null) {
+        longitude == null ||
+        (valveType == 'MAIN' && (ohtId == null || ohtId.isEmpty))) {
       return;
     }
 
@@ -620,6 +622,7 @@ class _MapScreenState extends State<MapScreen> {
       ward: wardId,
       zone: zoneId,
       valveType: valveType,
+      ohtId: ohtId?.isEmpty == true ? null : ohtId,
     );
 
     if (_valves.any(
@@ -684,7 +687,8 @@ class _MapScreenState extends State<MapScreen> {
         isGsm: item.isGsm,
         ward: result['ward_id']?.toString() ?? item.ward,
         zone: result['zone_id']?.toString() ?? item.zone,
-        valveType: item.valveType,
+        valveType: result['valve_type']?.toString() ?? item.valveType,
+        ohtId: result['oht_id']?.toString() ?? item.ohtId,
       );
 
       setState(() {
