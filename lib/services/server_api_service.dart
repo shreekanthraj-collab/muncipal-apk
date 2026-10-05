@@ -60,6 +60,36 @@ class ServerApiService {
         .toList(growable: false);
   }
 
+  Future<List<ServerMessage>> getMunicipalMessages() async {
+    final response = await _get('/api/v1/municipal/messages');
+    final raw = response['data'];
+    if (raw is! List) {
+      throw const FormatException('Invalid municipal messages response');
+    }
+    return raw.whereType<Map>()
+        .map((item) => ServerMessage.fromJson(Map<String, dynamic>.from(item)))
+        .toList(growable: false);
+  }
+
+  Future<void> markMunicipalMessageRead(String messageId) async {
+    await _post('/api/v1/municipal/messages/$messageId/read', const {});
+  }
+
+  Future<void> acknowledgeMunicipalMessage(String messageId) async {
+    await _post('/api/v1/municipal/messages/$messageId/acknowledge', const {});
+  }
+
+  Future<List<Map<String, dynamic>>> getRegisteredMunicipalValves() async {
+    final response = await _get('/api/v1/municipal/valves/registered');
+    final raw = response['data'];
+    if (raw is! List) {
+      throw const FormatException('Invalid registered valves response');
+    }
+    return raw.whereType<Map>()
+        .map((item) => Map<String, dynamic>.from(item))
+        .toList(growable: false);
+  }
+
   Future<Map<String, dynamic>> getBillingSummary({
     required DateTime periodStart,
     required DateTime periodEnd,
@@ -218,6 +248,34 @@ class ServerApiService {
     final m = value.month.toString().padLeft(2, '0');
     final d = value.day.toString().padLeft(2, '0');
     return '$y-$m-$d';
+  }
+}
+
+class ServerMessage {
+  final String id, title, message, type, priority;
+  final DateTime? createdAt, activeUntil;
+  final bool isRead, isAcknowledged;
+
+  const ServerMessage({
+    required this.id, required this.title, required this.message,
+    required this.type, required this.priority, required this.createdAt,
+    required this.activeUntil, required this.isRead, required this.isAcknowledged,
+  });
+
+  factory ServerMessage.fromJson(Map<String, dynamic> json) {
+    DateTime? parseDate(dynamic value) =>
+        value == null ? null : DateTime.tryParse(value.toString());
+    return ServerMessage(
+      id: (json['id'] ?? '').toString(),
+      title: (json['title'] ?? '').toString(),
+      message: (json['message'] ?? '').toString(),
+      type: (json['type'] ?? 'GENERAL').toString(),
+      priority: (json['priority'] ?? 'NORMAL').toString(),
+      createdAt: parseDate(json['created_at']),
+      activeUntil: parseDate(json['active_until']),
+      isRead: json['is_read'] == true,
+      isAcknowledged: json['is_acknowledged'] == true,
+    );
   }
 }
 
