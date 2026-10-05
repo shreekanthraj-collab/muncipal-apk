@@ -172,6 +172,7 @@ class _AddValveQrScreenState extends State<AddValveQrScreen> {
         'zone': saved['zone_id']?.toString() ?? '',
         'isGsm': data['transport_type']?.toString().toUpperCase() == 'GSM',
         'valveType': placement['valve_type'] ?? 'DISTRIBUTION',
+        'ohtId': placement['oht_id'],
       });
     } catch (e) {
       if (!mounted) return;
