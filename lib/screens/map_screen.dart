@@ -51,6 +51,7 @@ class _ManualValveRegistrationDialogState
     _valveId.dispose();
     _wardId.dispose();
     _zoneId.dispose();
+    _ohtId.dispose();
     _latitude.dispose();
     _longitude.dispose();
     super.dispose();
@@ -111,6 +112,18 @@ class _ManualValveRegistrationDialogState
                     : null,
               ),
               const SizedBox(height: 8),
+              if (_valveType == 'MAIN')
+                TextFormField(
+                  controller: _ohtId,
+                  decoration: const InputDecoration(
+                    labelText: 'OHT ID',
+                    hintText: 'e.g. OHT-01',
+                  ),
+                  validator: (value) => value == null || value.trim().isEmpty
+                      ? 'Enter OHT ID for MAIN valve'
+                      : null,
+                ),
+              const SizedBox(height: 8),
               TextFormField(
                 controller: _latitude,
                 keyboardType: const TextInputType.numberWithOptions(
@@ -157,6 +170,7 @@ class _ManualValveRegistrationDialogState
               'wardId': _wardId.text.trim(),
               'zoneId': _zoneId.text.trim(),
               'valveType': _valveType,
+              'ohtId': _ohtId.text.trim(),
               'latitude': _latitude.text.trim(),
               'longitude': _longitude.text.trim(),
             });
@@ -637,6 +651,8 @@ class _MapScreenState extends State<MapScreen> {
         valveId: valveId,
         wardId: wardId,
         zoneId: zoneId,
+        valveType: item.valveType,
+        ohtId: item.ohtId,
         latitude: latitude,
         longitude: longitude,
       );
