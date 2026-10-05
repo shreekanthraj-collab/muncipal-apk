@@ -23,6 +23,8 @@ class ServerApiService {
     required String valveId,
     required String wardId,
     required String zoneId,
+    required String valveType,
+    String? ohtId,
     required double latitude,
     required double longitude,
   }) {
@@ -32,6 +34,8 @@ class ServerApiService {
         'valve_id': valveId,
         'ward_id': wardId,
         'zone_id': zoneId,
+        'valve_type': valveType,
+        if (ohtId != null && ohtId.trim().isNotEmpty) 'oht_id': ohtId.trim(),
         'latitude': latitude,
         'longitude': longitude,
       },
