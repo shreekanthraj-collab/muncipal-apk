@@ -401,6 +401,7 @@ class _MapScreenState extends State<MapScreen> {
     final idController = TextEditingController();
     final zoneController = TextEditingController();
     final wardController = TextEditingController();
+    final ohtController = TextEditingController();
     String valveType = 'DISTRIBUTION';
     final latController = TextEditingController(
       text: _phoneLocation?.latitude.toStringAsFixed(6) ?? '',
@@ -463,6 +464,16 @@ class _MapScreenState extends State<MapScreen> {
                 ),
               ),
               const SizedBox(height: 10),
+              if (valveType == 'MAIN')
+                TextField(
+                  controller: ohtController,
+                  decoration: const InputDecoration(
+                    labelText: 'OHT ID',
+                    hintText: 'e.g. OHT-01',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              if (valveType == 'MAIN') const SizedBox(height: 10),
               TextField(
                 controller: latController,
                 keyboardType: const TextInputType.numberWithOptions(
@@ -501,6 +512,7 @@ class _MapScreenState extends State<MapScreen> {
               final ward = wardController.text.trim();
               final lat = double.tryParse(latController.text.trim());
               final lng = double.tryParse(lngController.text.trim());
+              final ohtId = ohtController.text.trim();
               if (id.isEmpty ||
                   zone.isEmpty ||
                   ward.isEmpty ||
@@ -509,7 +521,8 @@ class _MapScreenState extends State<MapScreen> {
                   lat < -90 ||
                   lat > 90 ||
                   lng < -180 ||
-                  lng > 180) {
+                  lng > 180 ||
+                  (valveType == 'MAIN' && ohtId.isEmpty)) {
                 return;
               }
               Navigator.pop(
@@ -522,6 +535,7 @@ class _MapScreenState extends State<MapScreen> {
                   zone: zone,
                   ward: ward,
                   valveType: valveType,
+                  ohtId: ohtId.isEmpty ? null : ohtId,
                 ),
               );
             },
@@ -535,6 +549,7 @@ class _MapScreenState extends State<MapScreen> {
       idController.dispose();
       zoneController.dispose();
       wardController.dispose();
+      ohtController.dispose();
       latController.dispose();
       lngController.dispose();
     });
