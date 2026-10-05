@@ -24,6 +24,7 @@ class _AddValveQrScreenState extends State<AddValveQrScreen> {
   Future<Map<String, String>?> _askPlacement() async {
     final ward = TextEditingController();
     final zone = TextEditingController();
+    final oht = TextEditingController();
     String valveType = 'DISTRIBUTION';
     final result = await showDialog<Map<String, String>>(
       context: context,
@@ -50,6 +51,16 @@ class _AddValveQrScreenState extends State<AddValveQrScreen> {
               TextField(controller: ward, decoration: const InputDecoration(labelText: 'Ward ID')),
               const SizedBox(height: 8),
               TextField(controller: zone, decoration: const InputDecoration(labelText: 'Zone ID')),
+              if (valveType == 'MAIN') ...[
+                const SizedBox(height: 8),
+                TextField(
+                  controller: oht,
+                  decoration: const InputDecoration(
+                    labelText: 'OHT ID',
+                    hintText: 'e.g. OHT-01',
+                  ),
+                ),
+              ],
             ],
           ),
           actions: [
@@ -58,10 +69,13 @@ class _AddValveQrScreenState extends State<AddValveQrScreen> {
               onPressed: () {
                 final w = ward.text.trim(), z = zone.text.trim();
                 if (w.isEmpty || z.isEmpty) return;
+                final o = oht.text.trim();
+                if (valveType == 'MAIN' && o.isEmpty) return;
                 Navigator.pop(context, {
                   'ward_id': w,
                   'zone_id': z,
                   'valve_type': valveType,
+                  'oht_id': o.isEmpty ? null : o,
                 });
               },
               child: const Text('REGISTER'),
@@ -72,6 +86,7 @@ class _AddValveQrScreenState extends State<AddValveQrScreen> {
     );
     ward.dispose();
     zone.dispose();
+    oht.dispose();
     return result;
   }
 
@@ -110,6 +125,8 @@ class _AddValveQrScreenState extends State<AddValveQrScreen> {
           'registration_token': token,
           'ward_id': placement['ward_id'],
           'zone_id': placement['zone_id'],
+          'valve_type': placement['valve_type'] ?? 'DISTRIBUTION',
+          if (placement['oht_id'] != null) 'oht_id': placement['oht_id'],
           'latitude': widget.latitude,
           'longitude': widget.longitude,
         }),
