@@ -1,4 +1,5 @@
 import 'services/server_api_service.dart';
+import 'services/orb_drive_server_config.dart';
 import 'package:flutter/material.dart';
 import 'services/apk_access_contract.dart';
 import 'services/apk_access_publisher.dart';
@@ -29,7 +30,7 @@ class AdminStore extends ChangeNotifier {
       ApkAccessSnapshot(grants: List<ApkAccessGrant>.unmodifiable(apkAccessGrants));
 
   ServerApiService get server => ServerApiService(
-        baseUrl: 'http://127.0.0.1:8000',
+        baseUrl: OrbDriveServerConfig.baseUrl,
         bearerToken: bearerToken,
       );
 
