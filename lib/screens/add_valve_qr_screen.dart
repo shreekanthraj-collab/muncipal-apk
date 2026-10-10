@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class AddValveQrScreen extends StatefulWidget {
   const AddValveQrScreen({super.key, required this.latitude, required this.longitude});
@@ -80,7 +81,7 @@ class _AddValveQrScreenState extends State<AddValveQrScreen> {
     try {
       final prefs = await SharedPreferences.getInstance();
       final operatorId = prefs.getString('municipal_operator_id');
-      final accessToken = prefs.getString('municipal_access_token');
+      final accessToken = await const FlutterSecureStorage().read(key: 'municipal_access_token');
       if (operatorId == null || operatorId.trim().isEmpty || accessToken == null || accessToken.trim().isEmpty) {
         throw Exception('Operator session is not linked to this APK. Sign in as a municipal operator first.');
       }
