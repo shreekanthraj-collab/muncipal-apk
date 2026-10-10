@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/valve_fault_storage.dart';
 import '../services/server_api_service.dart';
+import '../services/orb_drive_server_config.dart';
 import 'add_valve_qr_screen.dart';
 
 class _ManualValveRegistrationDialog extends StatefulWidget {
@@ -701,11 +702,23 @@ class _MapScreenState extends State<MapScreen> {
     }
 
     final gps = _phoneLocation!;
+    final prefs = await SharedPreferences.getInstance();
+    final accessToken = prefs.getString('municipal_access_token') ?? '';
+    if (accessToken.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please sign in again before registering a valve.')),
+        );
+      }
+      return;
+    }
     final result = await Navigator.of(context).push<Map<String, dynamic>>(
       MaterialPageRoute(
         builder: (_) => AddValveQrScreen(
           latitude: gps.latitude,
           longitude: gps.longitude,
+          accessToken: accessToken,
+          serverBaseUrl: OrbDriveServerConfig.baseUrl,
         ),
       ),
     );
