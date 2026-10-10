@@ -35,11 +35,10 @@ class _AddValveQrScreenState extends State<AddValveQrScreen> {
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('Transport: ${(preview['transport_type'] ?? 'UNKNOWN').toString().toUpperCase()}'),
-      Text('GPS: ${widget.latitude.toStringAsFixed(6)}, ${widget.longitude.toStringAsFixed(6)}'),
+              Text('GPS: ${widget.latitude.toStringAsFixed(6)}, ${widget.longitude.toStringAsFixed(6)}'),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
-                value: transportType,
+                initialValue: transportType,
                 decoration: const InputDecoration(labelText: 'Transport Type'),
                 items: const [
                   DropdownMenuItem(value: 'LORA', child: Text('LoRa — Gateway')),
@@ -103,7 +102,7 @@ class _AddValveQrScreenState extends State<AddValveQrScreen> {
       if (accessToken.trim().isEmpty) throw Exception('Please sign in with the registered municipal operator account.');
 
       final preview = await http.get(
-        Uri.parse('$serverBaseUrl/api/v1/municipal/valves/scan-preview/${Uri.encodeComponent(token)}'),
+        Uri.parse('${widget.serverBaseUrl}/api/v1/municipal/valves/scan-preview/${Uri.encodeComponent(token)}'),
         headers: {'Authorization': 'Bearer $accessToken'},
       );
       if (preview.statusCode != 200) {
@@ -127,7 +126,7 @@ class _AddValveQrScreenState extends State<AddValveQrScreen> {
       }
 
       final register = await http.post(
-        Uri.parse('$serverBaseUrl/api/v1/municipal/valves/register-placement'),
+        Uri.parse('${widget.serverBaseUrl}/api/v1/municipal/valves/register-placement'),
         headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $accessToken'},
         body: jsonEncode({
           'registration_token': token,
