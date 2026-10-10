@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:local_auth/local_auth.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../services/server_api_service.dart';
 import 'home_screen.dart';
@@ -21,6 +23,10 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _loading = false;
   String? _error;
   String? _devOtp;
+  bool _biometricEnabled = false;
+  bool _hasSavedSession = false;
+  final LocalAuthentication _localAuth = LocalAuthentication();
+  final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
 
   @override
   void dispose() {
@@ -39,6 +45,89 @@ class _LoginScreenState extends State<LoginScreen> {
         defaultValue: 'http://10.0.2.2:8000',
       ),
     );
+    _loadSavedSessionState();
+  }
+
+  Future<void> _loadSavedSessionState() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = await _secureStorage.read(key: 'municipal_access_token');
+    if (!mounted) return;
+    setState(() {
+      _biometricEnabled = prefs.getBool('municipal_biometric_enabled') ?? false;
+      _hasSavedSession = token != null && token.isNotEmpty &&
+          (prefs.getString('municipal_operator_id')?.isNotEmpty ?? false);
+    });
+  }
+
+  Future<void> _unlockWithBiometrics() async {
+    setState(() { _loading = true; _error = null; });
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = await _secureStorage.read(key: 'municipal_access_token');
+      final operatorId = prefs.getString('municipal_operator_id');
+      if (!_biometricEnabled || token == null || token.isEmpty || operatorId == null || operatorId.isEmpty) {
+        throw Exception('No saved biometric session. Sign in with OTP.');
+      }
+      final available = await _localAuth.canCheckBiometrics || await _localAuth.isDeviceSupported();
+      if (!available) throw Exception('Biometric authentication is unavailable on this device.');
+      final authenticated = await _localAuth.authenticate(
+        localizedReason: 'Unlock your municipal operator session',
+        options: const AuthenticationOptions(biometricOnly: true),
+      );
+      if (!authenticated) return;
+      _server.bearerToken = token;
+      final session = await _server.validateMunicipalSession();
+      if (session['valid'] != true || session['operator_id']?.toString() != operatorId) {
+        throw const FormatException('Server session validation failed. Sign in with OTP.');
+      }
+      if (!mounted) return;
+      Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const HomeScreen()));
+    } on ServerApiException catch (e) {
+      if (e.statusCode == 401 || e.statusCode == 403) {
+        await _secureStorage.delete(key: 'municipal_access_token');
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.remove('municipal_access_token');
+        await prefs.remove('municipal_operator_id');
+        await prefs.setBool('municipal_biometric_enabled', false);
+        if (mounted) setState(() { _biometricEnabled = false; _hasSavedSession = false; });
+      }
+      if (mounted) setState(() => _error = _serverError(e));
+    } catch (e) {
+      if (mounted) setState(() => _error = 'Biometric unlock failed: $e');
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<bool> _offerBiometricEnrollment() async {
+    final enable = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Enable fingerprint login?'),
+        content: const Text('Use this device\'s biometric unlock for future sign-ins. The server will still validate your session.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('NOT NOW')),
+          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('ENABLE')),
+        ],
+      ),
+    ) ?? false;
+    if (!enable) return false;
+    try {
+      final supported = await _localAuth.canCheckBiometrics || await _localAuth.isDeviceSupported();
+      if (!supported) throw Exception('This device does not support biometric authentication.');
+      final authenticated = await _localAuth.authenticate(
+        localizedReason: 'Confirm fingerprint login setup',
+        options: const AuthenticationOptions(biometricOnly: true),
+      );
+      if (!authenticated) return false;
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('municipal_biometric_enabled', true);
+      if (mounted) setState(() { _biometricEnabled = true; _hasSavedSession = true; });
+      return true;
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Fingerprint setup unavailable: $e')));
+      return false;
+    }
   }
 
   Future<void> login() async {
@@ -49,7 +138,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     if (accessToken.isNotEmpty && operatorId.isNotEmpty) {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('municipal_access_token', accessToken);
+      await _secureStorage.write(key: 'municipal_access_token', value: accessToken);
       await prefs.setString('municipal_operator_id', operatorId);
     }
 
@@ -115,8 +204,10 @@ class _LoginScreenState extends State<LoginScreen> {
         throw const FormatException('Incomplete municipal session returned.');
       }
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('municipal_access_token', accessToken);
+      await _secureStorage.write(key: 'municipal_access_token', value: accessToken);
+      await prefs.remove('municipal_access_token');
       await prefs.setString('municipal_operator_id', operatorId);
+      await _offerBiometricEnrollment();
       if (!mounted) return;
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => const HomeScreen()),
@@ -155,6 +246,14 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ),
         const SizedBox(height: 12),
+        if (_biometricEnabled && _hasSavedSession) ...[
+          FilledButton.icon(
+            onPressed: _loading ? null : _unlockWithBiometrics,
+            icon: const Icon(Icons.fingerprint),
+            label: const Padding(padding: EdgeInsets.all(12), child: Text('BIOMETRIC UNLOCK')),
+          ),
+          const SizedBox(height: 8),
+        ],
         if (!_otpRequested)
           FilledButton.icon(
             onPressed: _loading ? null : requestOtp,
