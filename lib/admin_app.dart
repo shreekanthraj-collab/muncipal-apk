@@ -2,7 +2,6 @@ import 'services/server_api_service.dart';
 import 'services/orb_drive_server_config.dart';
 import 'package:flutter/material.dart';
 import 'services/apk_access_contract.dart';
-import 'services/apk_access_publisher.dart';
 import 'pages/valve_page.dart';
 import 'pages/map_page.dart';
 import 'pages/rs485_page.dart';
@@ -150,6 +149,8 @@ class AdminStore extends ChangeNotifier {
     notifyListeners();
   }
 
+  void setZone(String value) { zone = value; notifyListeners(); }
+  void setWard(String value) { ward = value; notifyListeners(); }
   void addZone(String x){x=x.trim();if(x.isNotEmpty&&!zones.contains(x)){zones.add(x);zone=x;notifyListeners();}}
   void addWard(String x){x=x.trim();if(x.isNotEmpty&&!wards.contains(x)){wards.add(x);ward=x;notifyListeners();}}
   void addValve(String id,String type){id=id.trim();if(id.isNotEmpty&&get(id)==null){valves.add(Valve(id,type));notifyListeners();}}
@@ -243,7 +244,97 @@ const Text('Smart Water. Smart Cities. Better Tomorrow.',style:TextStyle(color:b
 class AdminShell extends StatefulWidget{const AdminShell({super.key});@override State<AdminShell> createState()=>_AdminShellState();}
 class _AdminShellState extends State<AdminShell>{int index=0;@override void initState(){super.initState();store.loadApkAccessGrants();}@override Widget build(BuildContext c){final pages=[HomePage(go:(i)=>setState(()=>index=i)),const ValvePage(type:'GSM'),const ValvePage(type:'LoRa'),const MapPage(),const Rs485Page()];return Scaffold(body:pages[index],bottomNavigationBar:NavigationBar(selectedIndex:index,onDestinationSelected:(i)=>setState(()=>index=i),destinations:const[NavigationDestination(icon:Icon(Icons.home),label:'Home'),NavigationDestination(icon:Icon(Icons.cell_tower),label:'GSM'),NavigationDestination(icon:Icon(Icons.cell_tower),label:'LoRa'),NavigationDestination(icon:Icon(Icons.map),label:'MAP'),NavigationDestination(icon:Icon(Icons.account_tree),label:'RS485')]));}}
 class Header extends StatelessWidget{const Header(this.title,{super.key});final String title;@override Widget build(BuildContext c)=>Container(color:blue,padding:EdgeInsets.only(top:MediaQuery.paddingOf(c).top+5,bottom:8),child:Row(children:[IconButton(onPressed:()=>Navigator.maybePop(c),icon:const Icon(Icons.arrow_back,color:Colors.white)),Expanded(child:Text(title,textAlign:TextAlign.center,style:const TextStyle(color:Colors.white,fontSize:20,fontWeight:FontWeight.w800))),const SizedBox(width:48,child:Icon(Icons.more_vert,color:Colors.white))]));}
-class HomePage extends StatelessWidget{const HomePage({super.key,required this.go});final ValueChanged<int> go;@override Widget build(BuildContext c)=>AnimatedBuilder(animation:store,builder:(_,__)=>SafeArea(top:false,child:Column(children:[Container(color:blue,padding:EdgeInsets.only(top:MediaQuery.paddingOf(c).top+8,left:15,right:10,bottom:14),child:const Row(children:[Icon(Icons.water_drop,color:Colors.white,size:42),SizedBox(width:10),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text('Smart Valve Management',style:TextStyle(color:Colors.white,fontSize:22,fontWeight:FontWeight.w800)),Text('Monitor  •  Control  •  Manage',style:TextStyle(color:Colors.white70))])),Icon(Icons.more_vert,color:Colors.white)])),Expanded(child:SingleChildScrollView(padding:const EdgeInsets.all(15),child:Column(children:[_messagesCard(c),Card(child:Padding(padding:const EdgeInsets.all(15),child:Column(children:[const Text('Select Zone and Ward',style:TextStyle(fontSize:26,fontWeight:FontWeight.w800,color:Color(0xFF10296B))),const Text('Choose zone and ward to view valve information'),const SizedBox(height:18),_drop('Zone No',store.zones,store.zone,(v){store.zone=v!;store.notifyListeners();}),const SizedBox(height:12),_drop('Ward No',store.wards,store.ward,(v){store.ward=v!;store.notifyListeners();}),const SizedBox(height:8),Row(children:[Expanded(child:OutlinedButton.icon(onPressed:()=>_add(c,'Zone'),icon:const Icon(Icons.add),label:const Text('ADD ZONE'))),const SizedBox(width:8),Expanded(child:OutlinedButton.icon(onPressed:()=>_add(c,'Ward'),icon:const Icon(Icons.add),label:const Text('ADD WARD')))]),const SizedBox(height:16),GridView.count(shrinkWrap:true,physics:const NeverScrollableScrollPhysics(),crossAxisCount:2,mainAxisSpacing:10,crossAxisSpacing:10,childAspectRatio:1.55,children:[_b('GSM / LTE\nValve View',Icons.cell_tower,Colors.blue,()=>go(1)),_b('LoRa\nValve View',Icons.cell_tower,purple,()=>go(2)),_b('MAP View',Icons.map,Colors.green,()=>go(3)),_b('RS485 View',Icons.account_tree,Colors.orange,()=>go(4))]),const SizedBox(height:12),const Info(icon:Icons.info,title:'Navigation',text:'Select Zone and Ward to navigate to GSM, LoRa, MAP or RS485 view.')]))))])));
+class HomePage extends StatelessWidget {
+  const HomePage({super.key, required this.go});
+  final ValueChanged<int> go;
+
+  @override
+  Widget build(BuildContext c) => AnimatedBuilder(
+        animation: store,
+        builder: (_, __) => SafeArea(
+          top: false,
+          child: Column(
+            children: [
+              Container(
+                color: blue,
+                padding: EdgeInsets.only(
+                  top: MediaQuery.paddingOf(c).top + 8,
+                  left: 15,
+                  right: 10,
+                  bottom: 14,
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.water_drop, color: Colors.white, size: 42),
+                    SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Smart Valve Management', style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w800)),
+                          Text('Monitor  •  Control  •  Manage', style: TextStyle(color: Colors.white70)),
+                        ],
+                      ),
+                    ),
+                    Icon(Icons.more_vert, color: Colors.white),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(15),
+                  child: Column(
+                    children: [
+                      _messagesCard(c),
+                      Card(
+                        child: Padding(
+                          padding: const EdgeInsets.all(15),
+                          child: Column(
+                            children: [
+                              const Text('Select Zone and Ward', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800, color: Color(0xFF10296B))),
+                              const Text('Choose zone and ward to view valve information'),
+                              const SizedBox(height: 18),
+                              _drop('Zone No', store.zones, store.zone, (v) { if (v != null) store.setZone(v); }),
+                              const SizedBox(height: 12),
+                              _drop('Ward No', store.wards, store.ward, (v) { if (v != null) store.setWard(v); }),
+                              const SizedBox(height: 8),
+                              Row(
+                                children: [
+                                  Expanded(child: OutlinedButton.icon(onPressed: () => _add(c, 'Zone'), icon: const Icon(Icons.add), label: const Text('ADD ZONE'))),
+                                  const SizedBox(width: 8),
+                                  Expanded(child: OutlinedButton.icon(onPressed: () => _add(c, 'Ward'), icon: const Icon(Icons.add), label: const Text('ADD WARD'))),
+                                ],
+                              ),
+                              const SizedBox(height: 16),
+                              GridView.count(
+                                shrinkWrap: true,
+                                physics: const NeverScrollableScrollPhysics(),
+                                crossAxisCount: 2,
+                                mainAxisSpacing: 10,
+                                crossAxisSpacing: 10,
+                                childAspectRatio: 1.55,
+                                children: [
+                                  _b('GSM / LTE\nValve View', Icons.cell_tower, Colors.blue, () => go(1)),
+                                  _b('LoRa\nValve View', Icons.cell_tower, purple, () => go(2)),
+                                  _b('MAP View', Icons.map, Colors.green, () => go(3)),
+                                  _b('RS485 View', Icons.account_tree, Colors.orange, () => go(4)),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              const Info(icon: Icons.info, title: 'Navigation', text: 'Select Zone and Ward to navigate to GSM, LoRa, MAP or RS485 view.'),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+}
 Widget _messagesCard(BuildContext c)=>Card(
   child:Padding(
     padding:const EdgeInsets.all(14),
@@ -273,4 +364,62 @@ Widget _messagesCard(BuildContext c)=>Card(
   ),
 );
 
-Widget _drop(String l,List<String> x,String v,ValueChanged<String?> f)=>DropdownButtonFormField<String>(initialValue:v,decoration:InputDecoration(labelText:l,prefixIcon:Icon(l.startsWith('Zone')?Icons.location_on:Icons.business)),items:x.map((e)=>DropdownMenuItem(value:e,child:Text(e))).toList(),onChanged:f);Widget _b(String t,IconData i,Color col,VoidCallback f)=>FilledButton.icon(style:FilledButton.styleFrom(backgroundColor:col),onPressed:f,icon:Icon(i,size:30),label:Text(t,textAlign:TextAlign.center));Future<void> _add(BuildContext c,String kind)async{final x=TextEditingController();await showDialog(context:c,builder:(_)=>AlertDialog(title:Text('Add $kind'),content:TextField(controller:x,decoration:InputDecoration(labelText:'$kind No')),actions:[TextButton(onPressed:()=>Navigator.pop(c),child:const Text('CANCEL')),FilledButton(onPressed:(){kind=='Zone'?store.addZone(x.text):store.addWard(x.text);Navigator.pop(c);},child:const Text('ADD'))]));x.dispose();}}
+Widget _drop(
+  String label,
+  List<String> values,
+  String selected,
+  ValueChanged<String?> onChanged,
+) =>
+    DropdownButtonFormField<String>(
+      initialValue: selected,
+      decoration: InputDecoration(
+        labelText: label,
+        prefixIcon: Icon(
+          label.startsWith('Zone') ? Icons.location_on : Icons.business,
+        ),
+      ),
+      items: values
+          .map((value) => DropdownMenuItem(value: value, child: Text(value)))
+          .toList(),
+      onChanged: onChanged,
+    );
+
+Widget _b(String text, IconData icon, Color color, VoidCallback onPressed) =>
+    FilledButton.icon(
+      style: FilledButton.styleFrom(backgroundColor: color),
+      onPressed: onPressed,
+      icon: Icon(icon, size: 30),
+      label: Text(text, textAlign: TextAlign.center),
+    );
+
+Future<void> _add(BuildContext context, String kind) async {
+  final controller = TextEditingController();
+  await showDialog<void>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      title: Text('Add $kind'),
+      content: TextField(
+        controller: controller,
+        decoration: InputDecoration(labelText: '$kind No'),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(dialogContext),
+          child: const Text('CANCEL'),
+        ),
+        FilledButton(
+          onPressed: () {
+            if (kind == 'Zone') {
+              store.addZone(controller.text);
+            } else {
+              store.addWard(controller.text);
+            }
+            Navigator.pop(dialogContext);
+          },
+          child: const Text('ADD'),
+        ),
+      ],
+    ),
+  );
+  controller.dispose();
+}

@@ -25,6 +25,8 @@ class ServerApiService {
     required String zoneId,
     required double latitude,
     required double longitude,
+    String valveType = 'DISTRIBUTION',
+    String? ohtId,
   }) {
     return _post(
       '/api/v1/municipal/valves/register-by-valve-id',
@@ -32,6 +34,8 @@ class ServerApiService {
         'valve_id': valveId,
         'ward_id': wardId,
         'zone_id': zoneId,
+        'valve_type': valveType,
+        if (ohtId != null && ohtId.trim().isNotEmpty) 'oht_id': ohtId.trim(),
         'latitude': latitude,
         'longitude': longitude,
       },

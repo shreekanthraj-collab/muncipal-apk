@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:local_auth/local_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/server_api_service.dart';
@@ -21,6 +22,8 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _loading = false;
   String? _error;
   String? _devOtp;
+  final LocalAuthentication _localAuth = LocalAuthentication();
+  bool _hasSavedSession = false;
 
   @override
   void dispose() {
@@ -33,12 +36,69 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   void initState() {
     super.initState();
+    _loadSavedSession();
     _server = ServerApiService(
       baseUrl: const String.fromEnvironment(
         'ORB_SERVER_URL',
         defaultValue: 'http://10.0.2.2:8000',
       ),
     );
+  }
+
+  Future<void> _loadSavedSession() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('municipal_access_token');
+    final operatorId = prefs.getString('municipal_operator_id');
+    if (!mounted) return;
+    setState(() {
+      _hasSavedSession = token != null &&
+          token.isNotEmpty &&
+          operatorId != null &&
+          operatorId.isNotEmpty;
+    });
+  }
+
+  Future<void> biometricLogin() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('municipal_access_token');
+      final operatorId = prefs.getString('municipal_operator_id');
+      if (token == null || token.isEmpty || operatorId == null || operatorId.isEmpty) {
+        setState(() {
+          _hasSavedSession = false;
+          _error = 'Please sign in with OTP once before using fingerprint login.';
+        });
+        return;
+      }
+
+      final supported = await _localAuth.isDeviceSupported();
+      final canCheck = await _localAuth.canCheckBiometrics;
+      final biometrics = canCheck ? await _localAuth.getAvailableBiometrics() : <BiometricType>[];
+      if (!supported || biometrics.isEmpty) {
+        setState(() => _error = 'Fingerprint authentication is not available. Use OTP login.');
+        return;
+      }
+
+      final authenticated = await _localAuth.authenticate(
+        localizedReason: 'Authenticate to open Smart Valve Management',
+        options: const AuthenticationOptions(
+          biometricOnly: true,
+          stickyAuth: true,
+        ),
+      );
+      if (!authenticated || !mounted) return;
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const HomeScreen()),
+      );
+    } catch (e) {
+      if (mounted) setState(() => _error = 'Fingerprint login failed: $e');
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
   }
 
   Future<void> login() async {
@@ -118,6 +178,7 @@ class _LoginScreenState extends State<LoginScreen> {
       await prefs.setString('municipal_access_token', accessToken);
       await prefs.setString('municipal_operator_id', operatorId);
       if (!mounted) return;
+      setState(() => _hasSavedSession = true);
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => const HomeScreen()),
       );
@@ -282,6 +343,20 @@ class _LoginScreenState extends State<LoginScreen> {
                           leading: Icon(Icons.verified_user),
                           title: Text('Authentication Required'),
                           subtitle: Text('Authentication is required for the registered mobile number.'),
+                        ),
+                      ],
+                      if (_hasSavedSession) ...[
+                        const SizedBox(height: 12),
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            onPressed: _loading ? null : biometricLogin,
+                            icon: const Icon(Icons.fingerprint),
+                            label: const Padding(
+                              padding: EdgeInsets.all(12),
+                              child: Text('LOGIN WITH FINGERPRINT'),
+                            ),
+                          ),
                         ),
                       ],
                       const ListTile(

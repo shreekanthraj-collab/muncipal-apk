@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import '../admin_app.dart';
+import '../screens/add_valve_qr_screen.dart';
+import '../services/orb_drive_server_config.dart';
 
 class MapPage extends StatefulWidget {
   const MapPage({super.key});
@@ -186,88 +189,66 @@ class _MapPageState extends State<MapPage> {
   }
 
   Future<void> _add(BuildContext c) async {
-    final ids = store.valves
-        .map((v) => v.id)
-        .where((x) => !mapped.contains(x))
-        .toList();
-
-    if (ids.isEmpty) {
+    if (store.bearerToken == null || store.bearerToken!.isEmpty) {
       ScaffoldMessenger.of(c).showSnackBar(
-        const SnackBar(content: Text('All existing valves are already on the map')),
+        const SnackBar(content: Text('Sign in as a registered municipal operator first')),
       );
       return;
     }
 
-    String id = ids.first;
-    final lat = TextEditingController(text: '14.600321');
-    final lng = TextEditingController(text: '120.985432');
+    try {
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
+        throw Exception('Location permission is required to place a valve on the map');
+      }
 
-    final ok = await showDialog<bool>(
-      context: c,
-      builder: (_) => StatefulBuilder(
-        builder: (c, s) => AlertDialog(
-          title: const Text('Add Valve to Map'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              DropdownButtonFormField<String>(
-                initialValue: id,
-                items: ids
-                    .map((x) => DropdownMenuItem(value: x, child: Text(x)))
-                    .toList(),
-                onChanged: (x) => s(() => id = x!),
-              ),
-              TextField(
-                controller: lat,
-                decoration: const InputDecoration(labelText: 'Latitude'),
-              ),
-              TextField(
-                controller: lng,
-                decoration: const InputDecoration(labelText: 'Longitude'),
-              ),
-            ],
+      final enabled = await Geolocator.isLocationServiceEnabled();
+      if (!enabled) throw Exception('Turn on phone location/GPS and try again');
+
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
+      );
+      if (!c.mounted) return;
+
+      final result = await Navigator.of(c).push<Map<String, dynamic>>(
+        MaterialPageRoute(
+          builder: (_) => AddValveQrScreen(
+            latitude: position.latitude,
+            longitude: position.longitude,
+            accessToken: store.bearerToken!,
+            serverBaseUrl: OrbDriveServerConfig.baseUrl,
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(c, false),
-              child: const Text('CANCEL'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(c, true),
-              child: const Text('ADD'),
-            ),
-          ],
-        ),
-      ),
-    );
-
-    if (ok == true) {
-      mapped.add(id);
-      final v = store.get(id)!;
-      v.lat = double.tryParse(lat.text);
-      v.lng = double.tryParse(lng.text);
-      setState(() {});
-
-      await showDialog(
-        context: c,
-        builder: (_) => AlertDialog(
-          title: const Text('Valve Added Successfully'),
-          content: Text(
-            'Valve ID: $id\nLatitude: ${lat.text}\nLongitude: ${lng.text}',
-          ),
-          actions: [
-            FilledButton(
-              onPressed: () => Navigator.pop(c),
-              child: const Text('OK'),
-            ),
-          ],
         ),
       );
-    }
+      if (!c.mounted || result == null) return;
 
-    lat.dispose();
-    lng.dispose();
+      final id = (result['id'] ?? '').toString().trim();
+      if (id.isEmpty) throw Exception('Server registered the valve but did not return its valve ID');
+
+      final transport = (result['transportType'] ?? (result['isGsm'] == true ? 'GSM' : 'LORA'))
+          .toString()
+          .toUpperCase();
+      if (store.get(id) == null) store.addValve(id, transport == 'GSM' ? 'GSM' : 'LoRa');
+      final valve = store.get(id)!;
+      valve.lat = (result['latitude'] as num?)?.toDouble() ?? position.latitude;
+      valve.lng = (result['longitude'] as num?)?.toDouble() ?? position.longitude;
+      setState(() => mapped.add(id));
+
+      ScaffoldMessenger.of(c).showSnackBar(
+        SnackBar(content: Text('$id registered and added to map ($transport)')),
+      );
+    } catch (e) {
+      if (!c.mounted) return;
+      ScaffoldMessenger.of(c).showSnackBar(
+        SnackBar(content: Text('Unable to add valve: $e')),
+      );
+    }
   }
+
 }
 
 class _MapPainter extends CustomPainter {
