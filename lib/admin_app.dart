@@ -2,7 +2,6 @@ import 'services/server_api_service.dart';
 import 'services/orb_drive_server_config.dart';
 import 'package:flutter/material.dart';
 import 'services/apk_access_contract.dart';
-import 'services/apk_access_publisher.dart';
 import 'pages/valve_page.dart';
 import 'pages/map_page.dart';
 import 'pages/rs485_page.dart';
@@ -365,4 +364,62 @@ Widget _messagesCard(BuildContext c)=>Card(
   ),
 );
 
-Widget _drop(String l,List<String> x,String v,ValueChanged<String?> f)=>DropdownButtonFormField<String>(initialValue:v,decoration:InputDecoration(labelText:l,prefixIcon:Icon(l.startsWith('Zone')?Icons.location_on:Icons.business)),items:x.map((e)=>DropdownMenuItem(value:e,child:Text(e))).toList(),onChanged:f);Widget _b(String t,IconData i,Color col,VoidCallback f)=>FilledButton.icon(style:FilledButton.styleFrom(backgroundColor:col),onPressed:f,icon:Icon(i,size:30),label:Text(t,textAlign:TextAlign.center));Future<void> _add(BuildContext c,String kind)async{final x=TextEditingController();await showDialog(context:c,builder:(_)=>AlertDialog(title:Text('Add $kind'),content:TextField(controller:x,decoration:InputDecoration(labelText:'$kind No')),actions:[TextButton(onPressed:()=>Navigator.pop(c),child:const Text('CANCEL')),FilledButton(onPressed:(){kind=='Zone'?store.addZone(x.text):store.addWard(x.text);Navigator.pop(c);},child:const Text('ADD'))]));x.dispose();}}
+Widget _drop(
+  String label,
+  List<String> values,
+  String selected,
+  ValueChanged<String?> onChanged,
+) =>
+    DropdownButtonFormField<String>(
+      initialValue: selected,
+      decoration: InputDecoration(
+        labelText: label,
+        prefixIcon: Icon(
+          label.startsWith('Zone') ? Icons.location_on : Icons.business,
+        ),
+      ),
+      items: values
+          .map((value) => DropdownMenuItem(value: value, child: Text(value)))
+          .toList(),
+      onChanged: onChanged,
+    );
+
+Widget _b(String text, IconData icon, Color color, VoidCallback onPressed) =>
+    FilledButton.icon(
+      style: FilledButton.styleFrom(backgroundColor: color),
+      onPressed: onPressed,
+      icon: Icon(icon, size: 30),
+      label: Text(text, textAlign: TextAlign.center),
+    );
+
+Future<void> _add(BuildContext context, String kind) async {
+  final controller = TextEditingController();
+  await showDialog<void>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      title: Text('Add $kind'),
+      content: TextField(
+        controller: controller,
+        decoration: InputDecoration(labelText: '$kind No'),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(dialogContext),
+          child: const Text('CANCEL'),
+        ),
+        FilledButton(
+          onPressed: () {
+            if (kind == 'Zone') {
+              store.addZone(controller.text);
+            } else {
+              store.addWard(controller.text);
+            }
+            Navigator.pop(dialogContext);
+          },
+          child: const Text('ADD'),
+        ),
+      ],
+    ),
+  );
+  controller.dispose();
+}
