@@ -72,7 +72,7 @@ class _LoginScreenState extends State<LoginScreen> {
       if (!available) throw Exception('Biometric authentication is unavailable on this device.');
       final authenticated = await _localAuth.authenticate(
         localizedReason: 'Unlock your municipal operator session',
-        options: const AuthenticationOptions(biometricOnly: true),
+        biometricOnly: true,
       );
       if (!authenticated) return;
       _server.bearerToken = token;
@@ -117,7 +117,7 @@ class _LoginScreenState extends State<LoginScreen> {
       if (!supported) throw Exception('This device does not support biometric authentication.');
       final authenticated = await _localAuth.authenticate(
         localizedReason: 'Confirm fingerprint login setup',
-        options: const AuthenticationOptions(biometricOnly: true),
+        biometricOnly: true,
       );
       if (!authenticated) return false;
       final prefs = await SharedPreferences.getInstance();
