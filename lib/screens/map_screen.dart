@@ -32,6 +32,7 @@ class _ManualValveRegistrationDialogState
   final _valveId = TextEditingController();
   final _wardId = TextEditingController();
   final _zoneId = TextEditingController();
+  final _ohtId = TextEditingController();
   late final TextEditingController _latitude;
   late final TextEditingController _longitude;
   String _valveType = 'DISTRIBUTION';
@@ -53,6 +54,7 @@ class _ManualValveRegistrationDialogState
     _valveId.dispose();
     _wardId.dispose();
     _zoneId.dispose();
+    _ohtId.dispose();
     _latitude.dispose();
     _longitude.dispose();
     super.dispose();
@@ -108,6 +110,17 @@ class _ManualValveRegistrationDialogState
                   if (value != null) setState(() => _valveType = value);
                 },
               ),
+              if (_valveType == 'MAIN') ...[
+                const SizedBox(height: 8),
+                TextFormField(
+                  controller: _ohtId,
+                  decoration: const InputDecoration(labelText: 'OHT ID (required for MAIN)'),
+                  validator: (value) => _valveType == 'MAIN' &&
+                          (value == null || value.trim().isEmpty)
+                      ? 'Enter OHT ID'
+                      : null,
+                ),
+              ],
               const SizedBox(height: 8),
               TextFormField(
                 controller: _wardId,
@@ -171,6 +184,7 @@ class _ManualValveRegistrationDialogState
               'wardId': _wardId.text.trim(),
               'zoneId': _zoneId.text.trim(),
               'valveType': _valveType,
+              'ohtId': _ohtId.text.trim(),
               'transportType': _transportType,
               'latitude': _latitude.text.trim(),
               'longitude': _longitude.text.trim(),
@@ -584,6 +598,7 @@ class _MapScreenState extends State<MapScreen> {
     final valveType = values['valveType']?.trim() == 'MAIN'
         ? 'MAIN'
         : 'DISTRIBUTION';
+    final ohtId = values['ohtId']?.trim();
     final transportType = values['transportType']?.trim().toUpperCase() == 'LORA'
         ? 'LORA'
         : 'GSM';
@@ -657,6 +672,8 @@ class _MapScreenState extends State<MapScreen> {
         zoneId: zoneId,
         latitude: latitude,
         longitude: longitude,
+        valveType: valveType,
+        ohtId: ohtId,
       );
 
       final serverItem = _ValveMapItem(
