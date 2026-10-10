@@ -9,6 +9,12 @@ void main() {
     expect(find.text('Smart Valve Management'), findsOneWidget);
     expect(find.text('Login'), findsOneWidget);
 
+    // The login screen defaults to Agent / Operator, which uses the OTP flow.
+    // Select Admin to expose the LOGIN button used by this navigation smoke test.
+    await tester.tap(find.text('Admin'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('LOGIN'), findsOneWidget);
     await tester.tap(find.text('LOGIN'));
     await tester.pumpAndSettle();
 
