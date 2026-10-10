@@ -208,6 +208,10 @@ class ServerApiService {
     );
   }
 
+  Future<Map<String, dynamic>> validateMunicipalSession() {
+    return _get('/api/v1/municipal/auth/session');
+  }
+
   Future<Map<String, dynamic>> _get(String path) async {
     final response = await http.get(Uri.parse('$baseUrl$path'), headers: _headers);
     return _decode(response);
