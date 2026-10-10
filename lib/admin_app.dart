@@ -2,7 +2,6 @@ import 'services/server_api_service.dart';
 import 'services/orb_drive_server_config.dart';
 import 'package:flutter/material.dart';
 import 'services/apk_access_contract.dart';
-import 'services/apk_access_publisher.dart';
 import 'pages/valve_page.dart';
 import 'pages/map_page.dart';
 import 'pages/rs485_page.dart';
@@ -150,6 +149,8 @@ class AdminStore extends ChangeNotifier {
     notifyListeners();
   }
 
+  void setZone(String value) { zone = value; notifyListeners(); }
+  void setWard(String value) { ward = value; notifyListeners(); }
   void addZone(String x){x=x.trim();if(x.isNotEmpty&&!zones.contains(x)){zones.add(x);zone=x;notifyListeners();}}
   void addWard(String x){x=x.trim();if(x.isNotEmpty&&!wards.contains(x)){wards.add(x);ward=x;notifyListeners();}}
   void addValve(String id,String type){id=id.trim();if(id.isNotEmpty&&get(id)==null){valves.add(Valve(id,type));notifyListeners();}}
@@ -313,13 +314,11 @@ class HomePage extends StatelessWidget {
                               ),
                               const SizedBox(height: 18),
                               _drop('Zone No', store.zones, store.zone, (v) {
-                                store.zone = v!;
-                                store.notifyListeners();
+                                store.setZone(v!);
                               }),
                               const SizedBox(height: 12),
                               _drop('Ward No', store.wards, store.ward, (v) {
-                                store.ward = v!;
-                                store.notifyListeners();
+                                store.setWard(v!);
                               }),
                               const SizedBox(height: 8),
                               Row(
@@ -409,4 +408,4 @@ Widget _messagesCard(BuildContext c)=>Card(
   ),
 );
 
-Widget _drop(String l,List<String> x,String v,ValueChanged<String?> f)=>DropdownButtonFormField<String>(initialValue:v,decoration:InputDecoration(labelText:l,prefixIcon:Icon(l.startsWith('Zone')?Icons.location_on:Icons.business)),items:x.map((e)=>DropdownMenuItem(value:e,child:Text(e))).toList(),onChanged:f);Widget _b(String t,IconData i,Color col,VoidCallback f)=>FilledButton.icon(style:FilledButton.styleFrom(backgroundColor:col),onPressed:f,icon:Icon(i,size:30),label:Text(t,textAlign:TextAlign.center));Future<void> _add(BuildContext c,String kind)async{final x=TextEditingController();await showDialog(context:c,builder:(_)=>AlertDialog(title:Text('Add $kind'),content:TextField(controller:x,decoration:InputDecoration(labelText:'$kind No')),actions:[TextButton(onPressed:()=>Navigator.pop(c),child:const Text('CANCEL')),FilledButton(onPressed:(){kind=='Zone'?store.addZone(x.text):store.addWard(x.text);Navigator.pop(c);},child:const Text('ADD'))]));x.dispose();}}
+Widget _drop(String l,List<String> x,String v,ValueChanged<String?> f)=>DropdownButtonFormField<String>(initialValue:v,decoration:InputDecoration(labelText:l,prefixIcon:Icon(l.startsWith('Zone')?Icons.location_on:Icons.business)),items:x.map((e)=>DropdownMenuItem(value:e,child:Text(e))).toList(),onChanged:f);Widget _b(String t,IconData i,Color col,VoidCallback f)=>FilledButton.icon(style:FilledButton.styleFrom(backgroundColor:col),onPressed:f,icon:Icon(i,size:30),label:Text(t,textAlign:TextAlign.center));Future<void> _add(BuildContext c,String kind)async{final x=TextEditingController();await showDialog(context:c,builder:(_)=>AlertDialog(title:Text('Add $kind'),content:TextField(controller:x,decoration:InputDecoration(labelText:'$kind No')),actions:[TextButton(onPressed:()=>Navigator.pop(c),child:const Text('CANCEL')),FilledButton(onPressed:(){kind=='Zone'?store.addZone(x.text):store.addWard(x.text);Navigator.pop(c);},child:const Text('ADD'))]));x.dispose();}
