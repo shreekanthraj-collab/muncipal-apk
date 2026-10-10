@@ -35,6 +35,7 @@ class _ManualValveRegistrationDialogState
   late final TextEditingController _latitude;
   late final TextEditingController _longitude;
   String _valveType = 'DISTRIBUTION';
+  String _transportType = 'GSM';
 
   @override
   void initState() {
@@ -76,6 +77,18 @@ class _ManualValveRegistrationDialogState
                 validator: (value) => value == null || value.trim().isEmpty
                     ? 'Enter Valve ID'
                     : null,
+              ),
+              const SizedBox(height: 8),
+              DropdownButtonFormField<String>(
+                initialValue: _transportType,
+                decoration: const InputDecoration(labelText: 'Transport Type'),
+                items: const [
+                  DropdownMenuItem(value: 'GSM', child: Text('GSM / LTE')),
+                  DropdownMenuItem(value: 'LORA', child: Text('LoRa')),
+                ],
+                onChanged: (value) {
+                  if (value != null) setState(() => _transportType = value);
+                },
               ),
               const SizedBox(height: 8),
               DropdownButtonFormField<String>(
@@ -158,6 +171,7 @@ class _ManualValveRegistrationDialogState
               'wardId': _wardId.text.trim(),
               'zoneId': _zoneId.text.trim(),
               'valveType': _valveType,
+              'transportType': _transportType,
               'latitude': _latitude.text.trim(),
               'longitude': _longitude.text.trim(),
             });
@@ -570,6 +584,9 @@ class _MapScreenState extends State<MapScreen> {
     final valveType = values['valveType']?.trim() == 'MAIN'
         ? 'MAIN'
         : 'DISTRIBUTION';
+    final transportType = values['transportType']?.trim().toUpperCase() == 'LORA'
+        ? 'LORA'
+        : 'GSM';
     final latitude = double.tryParse(values['latitude']!.trim());
     final longitude = double.tryParse(values['longitude']!.trim());
     if (valveId.isEmpty ||
@@ -584,7 +601,7 @@ class _MapScreenState extends State<MapScreen> {
       id: valveId,
       latitude: latitude,
       longitude: longitude,
-      isGsm: valveId.toUpperCase().startsWith('GSM'),
+      isGsm: transportType == 'GSM',
       ward: wardId,
       zone: zoneId,
       valveType: valveType,
