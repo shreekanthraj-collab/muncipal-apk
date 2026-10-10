@@ -2,12 +2,13 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:mobile_scanner/mobile_scanner.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 class AddValveQrScreen extends StatefulWidget {
-  const AddValveQrScreen({super.key, required this.latitude, required this.longitude});
+  const AddValveQrScreen({super.key, required this.latitude, required this.longitude, required this.accessToken, required this.serverBaseUrl});
   final double latitude;
   final double longitude;
+  final String accessToken;
+  final String serverBaseUrl;
   @override
   State<AddValveQrScreen> createState() => _AddValveQrScreenState();
 }
@@ -16,15 +17,16 @@ class _AddValveQrScreenState extends State<AddValveQrScreen> {
   final MobileScannerController _scanner = MobileScannerController();
   bool _handled = false;
   bool _loading = false;
-  static const serverBaseUrl = String.fromEnvironment('ORB_SERVER_URL', defaultValue: 'http://10.0.2.2:8000');
 
   @override
   void dispose() { _scanner.dispose(); super.dispose(); }
 
-  Future<Map<String, String>?> _askPlacement() async {
+  Future<Map<String, String>?> _askPlacement(String serverTransport) async {
     final ward = TextEditingController();
     final zone = TextEditingController();
+    final oht = TextEditingController();
     String valveType = 'DISTRIBUTION';
+    String transportType = serverTransport;
     final result = await showDialog<Map<String, String>>(
       context: context,
       builder: (_) => StatefulBuilder(
@@ -33,8 +35,20 @@ class _AddValveQrScreenState extends State<AddValveQrScreen> {
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('GPS: ${widget.latitude.toStringAsFixed(6)}, ${widget.longitude.toStringAsFixed(6)}'),
+              Text('Transport: ${(preview['transport_type'] ?? 'UNKNOWN').toString().toUpperCase()}'),
+      Text('GPS: ${widget.latitude.toStringAsFixed(6)}, ${widget.longitude.toStringAsFixed(6)}'),
               const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                value: transportType,
+                decoration: const InputDecoration(labelText: 'Transport Type'),
+                items: const [
+                  DropdownMenuItem(value: 'LORA', child: Text('LoRa — Gateway')),
+                  DropdownMenuItem(value: 'GSM', child: Text('GSM / LTE')),
+                ],
+                onChanged: (value) { if (value != null) setDialogState(() => transportType = value); },
+              ),
+              Align(alignment: Alignment.centerLeft, child: Text('Registered hardware: $serverTransport', style: const TextStyle(fontSize: 12, color: Colors.black54))),
+              const SizedBox(height: 8),
               DropdownButtonFormField<String>(
                 initialValue: valveType,
                 decoration: const InputDecoration(labelText: 'Valve Type'),
@@ -46,6 +60,10 @@ class _AddValveQrScreenState extends State<AddValveQrScreen> {
                   if (value != null) setDialogState(() => valveType = value);
                 },
               ),
+              if (valveType == 'MAIN') ...[
+                const SizedBox(height: 8),
+                TextField(controller: oht, decoration: const InputDecoration(labelText: 'OHT ID (required for MAIN)')),
+              ],
               const SizedBox(height: 8),
               TextField(controller: ward, decoration: const InputDecoration(labelText: 'Ward ID')),
               const SizedBox(height: 8),
@@ -56,12 +74,14 @@ class _AddValveQrScreenState extends State<AddValveQrScreen> {
             TextButton(onPressed: () => Navigator.pop(context), child: const Text('CANCEL')),
             FilledButton(
               onPressed: () {
-                final w = ward.text.trim(), z = zone.text.trim();
-                if (w.isEmpty || z.isEmpty) return;
+                final w = ward.text.trim(), z = zone.text.trim(), o = oht.text.trim();
+                if (w.isEmpty || z.isEmpty || (valveType == 'MAIN' && o.isEmpty)) return;
                 Navigator.pop(context, {
                   'ward_id': w,
                   'zone_id': z,
                   'valve_type': valveType,
+                  'transport_type': transportType,
+                  if (o.isNotEmpty) 'oht_id': o,
                 });
               },
               child: const Text('REGISTER'),
@@ -72,18 +92,15 @@ class _AddValveQrScreenState extends State<AddValveQrScreen> {
     );
     ward.dispose();
     zone.dispose();
+    oht.dispose();
     return result;
   }
 
   Future<void> _resolveToken(String token) async {
     setState(() => _loading = true);
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final operatorId = prefs.getString('municipal_operator_id');
-      final accessToken = prefs.getString('municipal_access_token');
-      if (operatorId == null || operatorId.trim().isEmpty || accessToken == null || accessToken.trim().isEmpty) {
-        throw Exception('Operator session is not linked to this APK. Sign in as a municipal operator first.');
-      }
+      final accessToken = widget.accessToken;
+      if (accessToken.trim().isEmpty) throw Exception('Please sign in with the registered municipal operator account.');
 
       final preview = await http.get(
         Uri.parse('$serverBaseUrl/api/v1/municipal/valves/scan-preview/${Uri.encodeComponent(token)}'),
@@ -95,12 +112,18 @@ class _AddValveQrScreenState extends State<AddValveQrScreen> {
         throw Exception(detail?.toString() ?? 'QR is invalid or already claimed');
       }
       final data = jsonDecode(preview.body) as Map<String, dynamic>;
+      final rawTransport = (data['transport_type'] ?? '').toString().trim().toUpperCase();
+      final serverTransport = rawTransport == 'LORA' ? 'LORA' : (rawTransport == 'GSM' || rawTransport == 'LTE' ? 'GSM' : '');
+      if (serverTransport.isEmpty) throw Exception('Unknown server transport type: $rawTransport');
 
-      final placement = await _askPlacement();
+      final placement = await _askPlacement(serverTransport);
       if (placement == null) {
         if (mounted) setState(() => _handled = false);
         _scanner.start();
         return;
+      }
+      if (placement['transport_type'] != serverTransport) {
+        throw Exception('Selected transport does not match the registered hardware ($serverTransport). Correct it before saving.');
       }
 
       final register = await http.post(
@@ -110,6 +133,8 @@ class _AddValveQrScreenState extends State<AddValveQrScreen> {
           'registration_token': token,
           'ward_id': placement['ward_id'],
           'zone_id': placement['zone_id'],
+          'valve_type': placement['valve_type'],
+          if (placement['oht_id'] != null) 'oht_id': placement['oht_id'],
           'latitude': widget.latitude,
           'longitude': widget.longitude,
         }),
@@ -153,7 +178,8 @@ class _AddValveQrScreenState extends State<AddValveQrScreen> {
         'longitude': widget.longitude,
         'ward': saved['ward_id']?.toString() ?? '',
         'zone': saved['zone_id']?.toString() ?? '',
-        'isGsm': data['transport_type']?.toString().toUpperCase() == 'GSM',
+        'transportType': serverTransport,
+        'isGsm': serverTransport == 'GSM',
         'valveType': placement['valve_type'] ?? 'DISTRIBUTION',
       });
     } catch (e) {
