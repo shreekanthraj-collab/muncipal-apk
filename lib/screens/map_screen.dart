@@ -609,7 +609,6 @@ class _MapScreenState extends State<MapScreen> {
     await _loadFaults();
     _safeMove(LatLng(item.latitude, item.longitude), 18);
 
-    final prefs = await SharedPreferences.getInstance();
     final bearer = await const FlutterSecureStorage().read(key: 'municipal_access_token');
 
     if (bearer == null || bearer.isEmpty) {
