@@ -26,12 +26,10 @@ class MunicipalSession {
   bool get isAdmin => const {
         'ADMIN',
         'SCADA_ADMIN',
-        'MUNICIPAL_ADMIN',
       }.contains(role.toUpperCase());
 
   bool get isLineOperator => const {
-        'LINE_OPERATOR',
-        'OPERATOR',
+        'ZONE_USER',
       }.contains(role.toUpperCase());
 
   factory MunicipalSession.fromJson(Map<String, dynamic> json) {
