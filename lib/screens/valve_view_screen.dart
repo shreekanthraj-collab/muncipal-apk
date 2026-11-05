@@ -37,6 +37,8 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
   String gwid = '';
   bool ocFault = false;
   bool lowVoltageBypass = false;
+  bool lowVoltageBypassKnown = false;
+  bool hasActualPosition = false;
 
   @override
   void initState() {
@@ -81,6 +83,8 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
       gwid = data.gwid;
       ocFault = data.ocFault;
       lowVoltageBypass = data.lowVoltageBypass;
+      lowVoltageBypassKnown = data.lowVoltageBypassKnown;
+      hasActualPosition = true;
       unawaited(ValveFaultStorage.save(data.valveId, data.ocFault));
     });
   }
@@ -123,6 +127,8 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
       communicationId = '';
       gwid = '';
       lowVoltageBypass = false;
+      lowVoltageBypassKnown = false;
+      hasActualPosition = false;
     });
     unawaited(_loadSelectedFault(value));
   }
@@ -389,10 +395,18 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
       children: [
         const Expanded(child: Text('LOW-VOLTAGE BYPASS')),
         Text(
-          lowVoltageBypass ? 'ACTIVE' : 'INACTIVE',
+          !lowVoltageBypassKnown
+              ? 'UNKNOWN'
+              : lowVoltageBypass
+                  ? 'ACTIVE'
+                  : 'INACTIVE',
           style: TextStyle(
             fontWeight: FontWeight.bold,
-            color: lowVoltageBypass ? Colors.red : Colors.green,
+            color: !lowVoltageBypassKnown
+                ? Colors.grey
+                : lowVoltageBypass
+                    ? Colors.red
+                    : Colors.green,
           ),
         ),
       ],
@@ -402,7 +416,9 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
       children: [
         const Expanded(child: Text('ACTUAL VALVE POSITION')),
         Text(
-          '$selectedPosition% • ${_actualValvePositionLabel()}',
+          hasActualPosition
+              ? '$selectedPosition% • ${_actualValvePositionLabel()}'
+              : 'UNKNOWN',
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
       ],
