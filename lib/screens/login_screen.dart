@@ -210,7 +210,10 @@ class _LoginScreenState extends State<LoginScreen> {
             children: [
               const Icon(Icons.water_drop, size: 72, color: Colors.blue),
               const SizedBox(height: 8),
-              const Text('Smart Valve Management', style: TextStyle(fontSize: 25, fontWeight: FontWeight.bold)),
+              const Text(
+                'Smart Valve Management',
+                style: TextStyle(fontSize: 25, fontWeight: FontWeight.bold),
+              ),
               const Text('Monitor  •  Control  •  Manage'),
               const SizedBox(height: 24),
               Card(
@@ -219,27 +222,27 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      const Text('Login', textAlign: TextAlign.center, style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 6),
-                      const Text('Your role and access scope are loaded from the municipal server.', textAlign: TextAlign.center),
-                      const SizedBox(height: 18),
                       const Text(
-                        'Municipal operator sign-in',
+                        'Municipal Login',
                         textAlign: TextAlign.center,
-                        style: TextStyle(fontWeight: FontWeight.w600),
+                        style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Your role and access scope are verified by the municipal server.',
+                        textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 18),
                       _operatorLogin(),
+                      const SizedBox(height: 12),
                       const ListTile(
-                          leading: Icon(Icons.verified_user),
-                          title: Text('Authentication Required'),
-                          subtitle: Text('Authentication is required for the registered mobile number.'),
+                        contentPadding: EdgeInsets.zero,
+                        leading: Icon(Icons.verified_user),
+                        title: Text('Server Authentication'),
+                        subtitle: Text(
+                          'Only the registered mobile number can receive an OTP. '
+                          'The server determines whether the account is Admin, Ward Admin, or Zone User.',
                         ),
-                      ],
-                      const ListTile(
-                        leading: Icon(Icons.phone_android),
-                        title: Text('Phone / mobile change'),
-                        subtitle: Text('Re-authentication is required if the app mobile number or phone changes.'),
                       ),
                     ],
                   ),
