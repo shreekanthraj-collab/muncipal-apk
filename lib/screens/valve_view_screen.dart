@@ -9,6 +9,8 @@ import '../services/aws_service.dart';
 import '../services/valve_storage.dart';
 import '../services/valve_fault_storage.dart';
 import '../services/valve_position_storage.dart';
+import '../services/municipal_session.dart';
+import '../services/server_api_service.dart';
 
 class ValveViewScreen extends StatefulWidget {
   final bool isLora;
@@ -41,6 +43,17 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
   bool lowVoltageBypass = false;
   bool lowVoltageBypassKnown = false;
   bool hasActualPosition = false;
+  MunicipalSession? _session;
+  DateTime? _lastTelemetryAt;
+  Timer? _freshnessTimer;
+  bool _registryLoading = true;
+  String? _registryError;
+  bool get _isAdmin => _session?.isAdmin == true;
+  bool get _isLineOperator => _session?.isLineOperator == true;
+  static const _serverUrl = String.fromEnvironment(
+    'ORB_SERVER_URL',
+    defaultValue: 'http://10.0.2.2:8000',
+  );
 
   @override
   void initState() {
@@ -48,23 +61,57 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
     mqtt = AwsService(host: mqttHost, clientId: 'ORBI-APP', valveId: '');
     statusSubscription = mqtt.valveStatusStream.listen(_applyStatus);
     unawaited(_loadValveIds());
+    _freshnessTimer = Timer.periodic(const Duration(seconds: 15), (_) {
+      if (mounted) setState(() {});
+    });
     if (mqttHost.isNotEmpty) unawaited(_connect());
   }
 
   Future<void> _loadValveIds() async {
-    final details = await ValveStorage.loadValveDetails();
-    final ids = details.keys.toList();
-    if (!mounted) return;
-    setState(() {
-      valveDetails = details;
-      valveIds = ids;
-      if (selectedValveId == null || !ids.contains(selectedValveId)) {
-        selectedValveId = ids.isEmpty ? null : ids.first;
+    try {
+      final session = await MunicipalSessionStorage.load();
+      if (session == null) {
+        throw const FormatException('Municipal login required. Sign in again.');
       }
-    });
-    if (selectedValveId != null) {
-      unawaited(_loadSelectedFault(selectedValveId!));
-      unawaited(_loadSavedPosition(selectedValveId!));
+      final api = ServerApiService(baseUrl: _serverUrl, bearerToken: session.accessToken);
+      final registered = await api.getRegisteredMunicipalValves();
+      final details = <String, Map<String, String>>{};
+      for (final valve in registered) {
+        final id = (valve['valve_id'] ?? valve['id'] ?? '').toString().trim();
+        if (id.isEmpty) continue;
+        // The authenticated server registry is authoritative for both identity and scope.
+        details[id] = {
+          'zone': (valve['zone'] ?? valve['zone_id'] ?? '').toString(),
+          'ward': (valve['ward'] ?? valve['ward_id'] ?? '').toString(),
+          'zone_id': (valve['zone_id'] ?? '').toString(),
+          'ward_id': (valve['ward_id'] ?? '').toString(),
+        };
+      }
+      final ids = details.keys.toList(growable: false);
+      if (!mounted) return;
+      setState(() {
+        _session = session;
+        valveDetails = details;
+        valveIds = ids;
+        _registryLoading = false;
+        _registryError = null;
+        if (selectedValveId == null || !ids.contains(selectedValveId)) {
+          selectedValveId = ids.isEmpty ? null : ids.first;
+        }
+      });
+      if (selectedValveId != null) {
+        unawaited(_loadSelectedFault(selectedValveId!));
+        unawaited(_loadSavedPosition(selectedValveId!));
+      }
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _registryLoading = false;
+        _registryError = error.toString();
+        valveIds = const [];
+        valveDetails = const {};
+        selectedValveId = null;
+      });
     }
   }
 
@@ -78,8 +125,9 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
 
   void _applyStatus(ValveData data) {
     if (!mounted) return;
-    if (selectedValveId != null && data.valveId != selectedValveId) return;
+    if (selectedValveId == null || data.valveId != selectedValveId) return;
     setState(() {
+      _lastTelemetryAt = DateTime.now();
       status = data.status;
       actualPosition = data.actual.clamp(0, 100).toInt();
       communicationId = data.connected ? data.communicationId : '';
@@ -97,6 +145,13 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
     int value = 0,
     Map<String, int>? fields,
   }) async {
+    if (_session == null || selectedValveId == null || !valveIds.contains(selectedValveId)) {
+      return false;
+    }
+    if (_isLineOperator && command != 'SET_POSITION' && command != 'ESTOP') {
+      return false;
+    }
+    if (!_isAdmin && !_isLineOperator) return false;
     final packet = ValveCommand(
       valveId: selectedValveId ?? '',
       command: command,
@@ -135,6 +190,7 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
       lowVoltageBypass = false;
       lowVoltageBypassKnown = false;
       hasActualPosition = false;
+      _lastTelemetryAt = null;
     });
     unawaited(_loadSelectedFault(value));
     unawaited(_loadSavedPosition(value));
@@ -188,6 +244,7 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
   @override
   void dispose() {
     statusSubscription?.cancel();
+    _freshnessTimer?.cancel();
     mqtt.dispose();
     super.dispose();
   }
@@ -235,9 +292,19 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
               items: valveIds.map((id) => DropdownMenuItem(value: id, child: Text(id))).toList(),
               onChanged: valveIds.isEmpty ? null : chooseValve,
             ),
-            if (valveIds.isEmpty) ...[
+              if (_registryLoading) ...[
               const SizedBox(height: 8),
-              const Text('No valves saved on MAP. Add the valve from MAP VIEW first.'),
+              const LinearProgressIndicator(),
+              const Text('Loading valves authorized for this account…'),
+            ],
+            if (_registryError != null) ...[
+              const SizedBox(height: 8),
+              Text('Valve registry unavailable: $_registryError', style: const TextStyle(color: Colors.red)),
+              OutlinedButton(onPressed: _loadValveIds, child: const Text('RETRY')),
+            ],
+            if (!_registryLoading && _registryError == null && valveIds.isEmpty) ...[
+              const SizedBox(height: 8),
+              const Text('No valves are assigned to this account.'),
             ],
             if (!widget.isLora) ...[
               const SizedBox(height: 12),
@@ -275,13 +342,14 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
           if (!widget.isLora) _gsmStatusCard() else _loraStatusCard(),
           if (_currentValveHasOcFault) _ocFaultBanner(),
           if (lowVoltageBypass && !widget.isLora) _voltageBypassBanner(),
-          _testFaultCard(),
           _positionCard(),
-          _calibrationCard(),
-          _voltageCard(),
-          _currentCard(),
-          _scheduleCard(),
-          if (widget.isLora) ...[
+          if (_isAdmin) ...[
+            _calibrationCard(),
+            _voltageCard(),
+            _currentCard(),
+            _scheduleCard(),
+          ],
+          if (widget.isLora && _isAdmin) ...[
             const SizedBox(height: 10),
             SizedBox(height: 54, child: FilledButton.tonal(onPressed: rebindOwner, style: FilledButton.styleFrom(foregroundColor: Colors.deepPurple), child: const Text('OWNER REBIND / GW REBIND', style: TextStyle(fontWeight: FontWeight.bold)))),
           ],
@@ -400,8 +468,9 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
       );
 
   Widget _gsmStatusCard() => Card(child: Padding(padding: const EdgeInsets.all(14), child: Column(children: [
-    const Text('SLEEP BYPASS / ACTIVE', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
-    SwitchListTile(contentPadding: EdgeInsets.zero, title: Text(sleepBypass ? 'ACTIVE' : 'SLEEP BYPASS'), subtitle: Text(sleepBypass ? 'Bypass active' : 'Normal sleep operation'), value: sleepBypass, onChanged: (value) async { setState(() => sleepBypass = value); await send(value ? 'VOLTAGE_BYPASS' : 'VOLTAGE_CANCEL'); }),
+    const Text('GSM / LTE STATUS', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+    if (_isAdmin)
+      SwitchListTile(contentPadding: EdgeInsets.zero, title: Text(sleepBypass ? 'ACTIVE' : 'SLEEP BYPASS'), subtitle: Text(sleepBypass ? 'Bypass active' : 'Normal sleep operation'), value: sleepBypass, onChanged: (value) async { setState(() => sleepBypass = value); await send(value ? 'VOLTAGE_BYPASS' : 'VOLTAGE_CANCEL'); }),
     _statusLine(),
   ])));
 
@@ -456,19 +525,41 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
 
   Widget _rssiBars(int level) => Row(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.end, children: List.generate(3, (index) => Container(width: 7, height: 8 + (index * 5), margin: const EdgeInsets.only(left: 3), color: index < level ? Colors.green : Colors.grey.shade300)));
 
-  Widget _statusLine() => Row(children: [const Expanded(child: Text('STATUS')), Text(status, style: const TextStyle(fontWeight: FontWeight.bold))]);
+  String get _telemetryState {
+    final updated = _lastTelemetryAt;
+    if (updated == null) return 'UNKNOWN / NO TELEMETRY';
+    if (DateTime.now().difference(updated) > const Duration(seconds: 90)) return 'OFFLINE / STALE';
+    return 'ONLINE';
+  }
 
-  Widget _positionCard() => _card('VALVE CONTROL', Column(children: [
-    Text('SET POINT: $selectedPosition%', style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold)),
-    Slider(value: selectedPosition.toDouble(), min: 0, max: 100, divisions: 100, label: '$selectedPosition%', onChanged: (v) => setState(() => selectedPosition = v.round())),
-    Wrap(spacing: 6, alignment: WrapAlignment.center, children: [0, 25, 50, 75, 100].map((v) => ChoiceChip(label: Text('$v%'), selected: selectedPosition == v, onSelected: (_) => setState(() => selectedPosition = v))).toList()),
-    const SizedBox(height: 12),
-    SizedBox(height: 48, width: double.infinity, child: FilledButton(onPressed: setValve, child: Text('SET % OPEN — $selectedPosition%'))),
-    const SizedBox(height: 8),
-    Row(children: [Expanded(child: FilledButton(onPressed: () async { final sent = await setValve(); if (sent && mounted) setState(() => status = 'OPENING TO $selectedPosition%'); }, child: const Text('OPEN'))), const SizedBox(width: 8), Expanded(child: FilledButton(onPressed: () async { await send('CLOSE'); setState(() => status = 'CLOSING'); }, child: const Text('CLOSE')))]),
-    const SizedBox(height: 8),
-    Row(children: [Expanded(child: FilledButton(onPressed: () async { await send('STOP'); setState(() => status = 'STOPPED'); }, child: const Text('STOP'))), const SizedBox(width: 8), Expanded(child: FilledButton.tonal(onPressed: () async { await send('ESTOP'); setState(() => status = 'E-STOP'); }, child: const Text('E-STOP')))]),
-  ]));
+  Widget _statusLine() => Column(children: [
+    Row(children: [const Expanded(child: Text('VALVE STATUS')), Text(status, style: const TextStyle(fontWeight: FontWeight.bold))]),
+    const SizedBox(height: 6),
+    Row(children: [const Expanded(child: Text('TELEMETRY')), Text(_telemetryState, style: TextStyle(fontWeight: FontWeight.bold, color: _telemetryState == 'ONLINE' ? Colors.green : Colors.red))]),
+    if (_lastTelemetryAt != null)
+      Align(alignment: Alignment.centerRight, child: Text('Last update: ${_lastTelemetryAt!.toLocal().toString().substring(0, 19)}', style: Theme.of(context).textTheme.bodySmall)),
+  ]);
+
+  Widget _positionCard() => _card(
+    _isAdmin ? 'VALVE CONTROL' : 'ASSIGNED VALVE POSITION',
+    Column(children: [
+      if (_isAdmin || _isLineOperator) ...[
+        Text('SET POINT: $selectedPosition%', style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold)),
+        Slider(value: selectedPosition.toDouble(), min: 0, max: 100, divisions: 100, label: '$selectedPosition%', onChanged: (v) => setState(() => selectedPosition = v.round())),
+        Wrap(spacing: 6, alignment: WrapAlignment.center, children: [0, 25, 50, 75, 100].map((v) => ChoiceChip(label: Text('$v%'), selected: selectedPosition == v, onSelected: (_) => setState(() => selectedPosition = v))).toList()),
+        const SizedBox(height: 12),
+        SizedBox(height: 48, width: double.infinity, child: FilledButton(onPressed: setValve, child: Text('SET POSITION — $selectedPosition%'))),
+      ],
+      if (_isAdmin) ...[
+        const SizedBox(height: 8),
+        Row(children: [Expanded(child: FilledButton(onPressed: () async { await send('OPEN'); if (mounted) setState(() => status = 'OPENING'); }, child: const Text('OPEN'))), const SizedBox(width: 8), Expanded(child: FilledButton(onPressed: () async { await send('CLOSE'); if (mounted) setState(() => status = 'CLOSING'); }, child: const Text('CLOSE')))]),
+        const SizedBox(height: 8),
+        SizedBox(width: double.infinity, child: FilledButton(onPressed: () async { await send('STOP'); if (mounted) setState(() => status = 'STOPPED'); }, child: const Text('STOP'))),
+      ],
+      const SizedBox(height: 8),
+      SizedBox(width: double.infinity, child: FilledButton.tonal(onPressed: () async { await send('ESTOP'); if (mounted) setState(() => status = 'E-STOP'); }, child: const Text('E-STOP'))),
+    ]),
+  );
 
   Widget _calibrationCard() => _card('VALVE CALIBRATION', Column(children: [
     Align(alignment: Alignment.centerLeft, child: Text('State: $calibration')),
