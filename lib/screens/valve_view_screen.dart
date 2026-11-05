@@ -27,6 +27,7 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
   StreamSubscription<ValveData>? statusSubscription;
   String? selectedValveId;
   int selectedPosition = 0;
+  int actualPosition = 0;
   String status = 'STOPPED';
   String calibration = 'IDLE';
   bool sleepBypass = false;
@@ -78,7 +79,8 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
     if (selectedValveId != null && data.valveId != selectedValveId) return;
     setState(() {
       status = data.status;
-      selectedPosition = data.actual.clamp(0, 100).toInt();
+      actualPosition = data.actual.clamp(0, 100).toInt();
+      selectedPosition = actualPosition;
       communicationId = data.connected ? data.communicationId : '';
       gwid = data.gwid;
       ocFault = data.ocFault;
@@ -417,7 +419,7 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
         const Expanded(child: Text('ACTUAL VALVE POSITION')),
         Text(
           hasActualPosition
-              ? '$selectedPosition% • ${_actualValvePositionLabel()}'
+              ? '$actualPosition% • ${_actualValvePositionLabel()}'
               : 'UNKNOWN',
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
@@ -428,8 +430,8 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
   ])));
 
   String _actualValvePositionLabel() {
-    if (selectedPosition <= 0) return 'CLOSED';
-    if (selectedPosition >= 100) return 'OPEN';
+    if (actualPosition <= 0) return 'CLOSED';
+    if (actualPosition >= 100) return 'OPEN';
     return 'PARTIALLY OPEN';
   }
 
