@@ -8,6 +8,7 @@ import '../models/valve_data.dart';
 import '../services/aws_service.dart';
 import '../services/valve_storage.dart';
 import '../services/valve_fault_storage.dart';
+import '../services/valve_position_storage.dart';
 
 class ValveViewScreen extends StatefulWidget {
   final bool isLora;
@@ -63,6 +64,7 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
     });
     if (selectedValveId != null) {
       unawaited(_loadSelectedFault(selectedValveId!));
+      unawaited(_loadSavedPosition(selectedValveId!));
     }
   }
 
@@ -80,7 +82,6 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
     setState(() {
       status = data.status;
       actualPosition = data.actual.clamp(0, 100).toInt();
-      selectedPosition = actualPosition;
       communicationId = data.connected ? data.communicationId : '';
       gwid = data.gwid;
       ocFault = data.ocFault;
@@ -113,11 +114,13 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
       days: fields?['days'],
     );
     debugPrint(const JsonEncoder.withIndent('  ').convert(packet.toJson()));
-    if (!mqtt.connected) return;
+    if (!mqtt.connected) return false;
     try {
       await mqtt.sendCommand(packet);
+      return true;
     } catch (_) {
       if (mounted) setState(() => status = 'TRANSPORT ERROR');
+      return false;
     }
   }
 
@@ -133,6 +136,13 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
       hasActualPosition = false;
     });
     unawaited(_loadSelectedFault(value));
+    unawaited(_loadSavedPosition(value));
+  }
+
+  Future<void> _loadSavedPosition(String valveId) async {
+    final saved = await ValvePositionStorage.load(valveId);
+    if (!mounted || selectedValveId != valveId || saved == null) return;
+    setState(() => selectedPosition = saved);
   }
 
   Future<void> _loadSelectedFault(String valveId) async {
@@ -144,8 +154,15 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
   }
 
   Future<void> setValve() async {
-    await send('SET_POSITION', value: selectedPosition);
-    if (mounted) setState(() => status = 'POSITION ${selectedPosition}%');
+    final valveId = selectedValveId;
+    if (valveId == null || valveId.isEmpty) return;
+    final target = selectedPosition.clamp(0, 100);
+    final sent = await send('SET_POSITION', value: target);
+    if (!sent) return;
+    await ValvePositionStorage.save(valveId, target);
+    if (mounted && selectedValveId == valveId) {
+      setState(() => status = 'POSITION $target%');
+    }
   }
 
   Future<void> rebindOwner() async {
@@ -446,7 +463,7 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
     const SizedBox(height: 12),
     SizedBox(height: 48, width: double.infinity, child: FilledButton(onPressed: setValve, child: Text('SET % OPEN — $selectedPosition%'))),
     const SizedBox(height: 8),
-    Row(children: [Expanded(child: FilledButton(onPressed: () async { await send('OPEN'); setState(() => status = 'OPENING'); }, child: const Text('OPEN'))), const SizedBox(width: 8), Expanded(child: FilledButton(onPressed: () async { await send('CLOSE'); setState(() => status = 'CLOSING'); }, child: const Text('CLOSE')))]),
+    Row(children: [Expanded(child: FilledButton(onPressed: () async { await setValve(); if (mounted) setState(() => status = 'OPENING TO $selectedPosition%'); }, child: const Text('OPEN TO SAVED POSITION'))), const SizedBox(width: 8), Expanded(child: FilledButton(onPressed: () async { await send('CLOSE'); setState(() => status = 'CLOSING'); }, child: const Text('CLOSE')))]),
     const SizedBox(height: 8),
     Row(children: [Expanded(child: FilledButton(onPressed: () async { await send('STOP'); setState(() => status = 'STOPPED'); }, child: const Text('STOP'))), const SizedBox(width: 8), Expanded(child: FilledButton.tonal(onPressed: () async { await send('ESTOP'); setState(() => status = 'E-STOP'); }, child: const Text('E-STOP')))]),
   ]));
