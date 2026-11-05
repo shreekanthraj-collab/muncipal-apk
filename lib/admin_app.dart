@@ -337,10 +337,14 @@ class HomePage extends StatelessWidget {
                               ),
                               const SizedBox(height: 18),
                               _drop('Zone No', store.zones, store.zone,
-                                  store.setZone),
+                                  (value) {
+                                if (value != null) store.setZone(value);
+                              }),
                               const SizedBox(height: 12),
                               _drop('Ward No', store.wards, store.ward,
-                                  store.setWard),
+                                  (value) {
+                                if (value != null) store.setWard(value);
+                              }),
                               const SizedBox(height: 8),
                               Row(
                                 children: [
