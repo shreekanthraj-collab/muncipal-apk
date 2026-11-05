@@ -4,9 +4,11 @@ on:
   push:
     branches:
       - fix/lora-low-voltage-bypass-status-ui
+      - feat/municipal-auth-session-claims
   pull_request:
     branches:
       - fix/admin-app-analyzer-repair
+      - feat/municipal-zone-role-access-policy
 
 jobs:
   flutter-test:
