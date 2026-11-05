@@ -83,6 +83,7 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
         if (selectedValveId == null || !ids.contains(selectedValveId)) selectedValveId = ids.isEmpty ? null : ids.first;
       });
       if (selectedValveId != null) {
+        mqtt.subscribeValveStatus(selectedValveId!);
         unawaited(_loadSelectedFault(selectedValveId!));
         unawaited(_loadSavedPosition(selectedValveId!));
       }
@@ -155,6 +156,7 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
 
   void chooseValve(String? value) {
     if (value == null) return;
+    mqtt.subscribeValveStatus(value);
     setState(() {
       selectedValveId = value;
       selectedPosition = 0;
