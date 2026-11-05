@@ -12,8 +12,6 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  String role = 'Agent / Operator';
-  final passwordController = TextEditingController();
   final phoneController = TextEditingController();
   final otpController = TextEditingController();
   late final ServerApiService _server;
@@ -24,7 +22,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   void dispose() {
-    passwordController.dispose();
     phoneController.dispose();
     otpController.dispose();
     super.dispose();
@@ -40,25 +37,6 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
     );
   }
-
-  Future<void> login() async {
-    // Provision an existing municipal session for server communication.
-    // This keeps the existing login UI and navigation unchanged.
-    const accessToken = String.fromEnvironment('ORB_MUNICIPAL_ACCESS_TOKEN');
-    const operatorId = String.fromEnvironment('ORB_MUNICIPAL_OPERATOR_ID');
-
-    if (accessToken.isNotEmpty && operatorId.isNotEmpty) {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('municipal_access_token', accessToken);
-      await prefs.setString('municipal_operator_id', operatorId);
-    }
-
-    if (!mounted) return;
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const HomeScreen()),
-    );
-  }
-
 
   Future<void> requestOtp() async {
     final phone = phoneController.text.trim();
@@ -110,13 +88,23 @@ class _LoginScreenState extends State<LoginScreen> {
       );
       final accessToken = response['access_token']?.toString();
       final operatorId = response['operator_id']?.toString();
+      final organizationId = response['organization_id']?.toString();
+      final serverRole = response['role']?.toString();
       if (accessToken == null || accessToken.isEmpty ||
-          operatorId == null || operatorId.isEmpty) {
+          operatorId == null || operatorId.isEmpty ||
+          organizationId == null || organizationId.isEmpty ||
+          serverRole == null || serverRole.isEmpty) {
         throw const FormatException('Incomplete municipal session returned.');
       }
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('municipal_access_token', accessToken);
       await prefs.setString('municipal_operator_id', operatorId);
+      await prefs.setString('municipal_organization_id', organizationId);
+      await prefs.setString('municipal_role', serverRole);
+      await prefs.setString('municipal_phone', response['phone']?.toString() ?? phone);
+      await prefs.setStringList('municipal_ward_ids', _stringList(response['ward_ids']));
+      await prefs.setStringList('municipal_zone_ids', _stringList(response['zone_ids']));
+      await prefs.setStringList('municipal_valve_ids', _stringList(response['valve_ids']));
       if (!mounted) return;
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => const HomeScreen()),
@@ -130,6 +118,11 @@ class _LoginScreenState extends State<LoginScreen> {
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  List<String> _stringList(dynamic value) {
+    if (value is! List) return const [];
+    return value.map((item) => item.toString()).toList(growable: false);
   }
 
   String _serverError(ServerApiException e) {
@@ -213,22 +206,6 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  void forgotPassword() {
-    showDialog<void>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Forgot Password'),
-        content: const Text(
-          'Authentication will be sent to the registered mobile number. '
-          'If the app mobile number or phone changes, re-authentication is required.',
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('OK')),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -250,40 +227,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     children: [
                       const Text('Login', textAlign: TextAlign.center, style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold)),
                       const SizedBox(height: 6),
-                      const Text('Select your role to continue', textAlign: TextAlign.center),
+                      const Text('Sign in with your registered municipal mobile number. Your role and access scope are assigned by the server.', textAlign: TextAlign.center),
                       const SizedBox(height: 18),
-                      SegmentedButton<String>(
-                        segments: const [
-                          ButtonSegment(value: 'Admin', label: Text('Admin'), icon: Icon(Icons.admin_panel_settings)),
-                          ButtonSegment(value: 'Agent / Operator', label: Text('Agent / Operator'), icon: Icon(Icons.groups)),
-                        ],
-                        selected: {role},
-                        onSelectionChanged: (value) => setState(() => role = value.first),
-                      ),
-                      const SizedBox(height: 18),
-                      if (role == 'Agent / Operator')
-                        _operatorLogin()
-                      else ...[
-                        TextField(
-                          controller: passwordController,
-                          obscureText: true,
-                          decoration: const InputDecoration(labelText: 'Password', border: OutlineInputBorder(), prefixIcon: Icon(Icons.lock)),
-                        ),
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: TextButton(onPressed: forgotPassword, child: const Text('Forgot Password?')),
-                        ),
-                        FilledButton(
-                          onPressed: _loading ? null : login,
-                          child: const Padding(padding: EdgeInsets.all(12), child: Text('LOGIN')),
-                        ),
-                        const SizedBox(height: 14),
-                        const ListTile(
-                          leading: Icon(Icons.verified_user),
-                          title: Text('Authentication Required'),
-                          subtitle: Text('Authentication is required for the registered mobile number.'),
-                        ),
-                      ],
+                      _operatorLogin(),
                       const ListTile(
                         leading: Icon(Icons.phone_android),
                         title: Text('Phone / mobile change'),
