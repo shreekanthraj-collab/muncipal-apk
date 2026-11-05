@@ -19,6 +19,7 @@ class AwsService {
       StreamController<ValveData>.broadcast();
 
   bool _connected = false;
+  final Set<String> _statusSubscriptions = <String>{};
 
   AwsService({
     required this.host,
@@ -56,6 +57,15 @@ class AwsService {
     } catch (_) {
       _client.disconnect();
       rethrow;
+    }
+  }
+
+  void subscribeValveStatus(String valveId) {
+    final id = valveId.trim();
+    if (id.isEmpty) return;
+    _statusSubscriptions.add(id);
+    if (_connected) {
+      _client.subscribe('orb/node/$id/status', MqttQos.atLeastOnce);
     }
   }
 
@@ -100,10 +110,9 @@ class AwsService {
   void _onConnected() {
     _connected = true;
 
-    _client.subscribe(
-      statusTopic,
-      MqttQos.atLeastOnce,
-    );
+    for (final id in _statusSubscriptions) {
+      _client.subscribe('orb/node/$id/status', MqttQos.atLeastOnce);
+    }
 
     _client.updates?.listen(_handleMessages);
   }
