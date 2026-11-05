@@ -6,7 +6,6 @@ import 'package:flutter/material.dart';
 import '../models/valve_command.dart';
 import '../models/valve_data.dart';
 import '../services/aws_service.dart';
-import '../services/valve_storage.dart';
 import '../services/valve_fault_storage.dart';
 import '../services/valve_position_storage.dart';
 import '../services/municipal_session.dart';
@@ -45,6 +44,7 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
   bool hasActualPosition = false;
   MunicipalSession? _session;
   DateTime? _lastTelemetryAt;
+  bool _telemetryConnected = false;
   Timer? _freshnessTimer;
   bool _registryLoading = true;
   String? _registryError;
@@ -128,6 +128,7 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
     if (selectedValveId == null || data.valveId != selectedValveId) return;
     setState(() {
       _lastTelemetryAt = DateTime.now();
+      _telemetryConnected = data.connected;
       status = data.status;
       actualPosition = data.actual.clamp(0, 100).toInt();
       communicationId = data.connected ? data.communicationId : '';
@@ -191,6 +192,7 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
       lowVoltageBypassKnown = false;
       hasActualPosition = false;
       _lastTelemetryAt = null;
+      _telemetryConnected = false;
     });
     unawaited(_loadSelectedFault(value));
     unawaited(_loadSavedPosition(value));
@@ -342,7 +344,7 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
           if (!widget.isLora) _gsmStatusCard() else _loraStatusCard(),
           if (_currentValveHasOcFault) _ocFaultBanner(),
           if (lowVoltageBypass && !widget.isLora) _voltageBypassBanner(),
-          _positionCard(),
+          if (_session != null && selectedValveId != null) _positionCard(),
           if (_isAdmin) ...[
             _calibrationCard(),
             _voltageCard(),
@@ -528,7 +530,7 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
   String get _telemetryState {
     final updated = _lastTelemetryAt;
     if (updated == null) return 'UNKNOWN / NO TELEMETRY';
-    if (DateTime.now().difference(updated) > const Duration(seconds: 90)) return 'OFFLINE / STALE';
+    if (!_telemetryConnected || DateTime.now().difference(updated) > const Duration(seconds: 90)) return 'OFFLINE / STALE';
     return 'ONLINE';
   }
 
