@@ -5,10 +5,12 @@ on:
     branches:
       - fix/lora-low-voltage-bypass-status-ui
       - feat/municipal-auth-session-claims
+      - feat/municipal-server-valve-monitoring
   pull_request:
     branches:
       - fix/admin-app-analyzer-repair
       - feat/municipal-zone-role-access-policy
+      - feat/municipal-auth-session-claims
 
 jobs:
   flutter-test:

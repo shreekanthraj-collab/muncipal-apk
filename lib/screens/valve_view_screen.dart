@@ -6,7 +6,8 @@ import 'package:flutter/material.dart';
 import '../models/valve_command.dart';
 import '../models/valve_data.dart';
 import '../services/aws_service.dart';
-import '../services/valve_storage.dart';
+import '../services/municipal_session.dart';
+import '../services/server_api_service.dart';
 import '../services/valve_fault_storage.dart';
 import '../services/valve_position_storage.dart';
 
@@ -41,6 +42,12 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
   bool lowVoltageBypass = false;
   bool lowVoltageBypassKnown = false;
   bool hasActualPosition = false;
+  DateTime? _lastTelemetryAt;
+  bool _telemetryConnected = false;
+  Timer? _freshnessTimer;
+  bool _registryLoading = true;
+  String? _registryError;
+  static const _serverUrl = String.fromEnvironment('ORB_SERVER_URL', defaultValue: 'http://10.0.2.2:8000');
 
   @override
   void initState() {
@@ -48,23 +55,44 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
     mqtt = AwsService(host: mqttHost, clientId: 'ORBI-APP', valveId: '');
     statusSubscription = mqtt.valveStatusStream.listen(_applyStatus);
     unawaited(_loadValveIds());
+    _freshnessTimer = Timer.periodic(const Duration(seconds: 15), (_) { if (mounted) setState(() {}); });
     if (mqttHost.isNotEmpty) unawaited(_connect());
   }
 
   Future<void> _loadValveIds() async {
-    final details = await ValveStorage.loadValveDetails();
-    final ids = details.keys.toList();
-    if (!mounted) return;
-    setState(() {
-      valveDetails = details;
-      valveIds = ids;
-      if (selectedValveId == null || !ids.contains(selectedValveId)) {
-        selectedValveId = ids.isEmpty ? null : ids.first;
+    try {
+      final session = await MunicipalSessionStorage.load();
+      if (session == null) throw const FormatException('Municipal login required. Sign in again.');
+      final api = ServerApiService(baseUrl: _serverUrl, bearerToken: session.accessToken);
+      final registered = await api.getRegisteredMunicipalValves();
+      final details = <String, Map<String, String>>{};
+      for (final valve in registered) {
+        final id = (valve['valve_id'] ?? valve['id'] ?? '').toString().trim();
+        if (id.isEmpty) continue;
+        details[id] = {
+          'zone': (valve['zone'] ?? valve['zone_id'] ?? '').toString(),
+          'ward': (valve['ward'] ?? valve['ward_id'] ?? '').toString(),
+          'zone_id': (valve['zone_id'] ?? '').toString(),
+          'ward_id': (valve['ward_id'] ?? '').toString(),
+        };
       }
-    });
-    if (selectedValveId != null) {
-      unawaited(_loadSelectedFault(selectedValveId!));
-      unawaited(_loadSavedPosition(selectedValveId!));
+      final ids = details.keys.toList(growable: false);
+      if (!mounted) return;
+      setState(() {
+        valveDetails = details; valveIds = ids; _registryLoading = false; _registryError = null;
+        if (selectedValveId == null || !ids.contains(selectedValveId)) selectedValveId = ids.isEmpty ? null : ids.first;
+      });
+      if (selectedValveId != null) {
+        mqtt.subscribeValveStatus(selectedValveId!);
+        unawaited(_loadSelectedFault(selectedValveId!));
+        unawaited(_loadSavedPosition(selectedValveId!));
+      }
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _registryLoading = false; _registryError = error.toString();
+        valveIds = const []; valveDetails = const {}; selectedValveId = null;
+      });
     }
   }
 
@@ -78,8 +106,10 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
 
   void _applyStatus(ValveData data) {
     if (!mounted) return;
-    if (selectedValveId != null && data.valveId != selectedValveId) return;
+    if (selectedValveId == null || data.valveId != selectedValveId) return;
     setState(() {
+      _lastTelemetryAt = DateTime.now();
+      _telemetryConnected = data.connected;
       status = data.status;
       actualPosition = data.actual.clamp(0, 100).toInt();
       communicationId = data.connected ? data.communicationId : '';
@@ -126,6 +156,7 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
 
   void chooseValve(String? value) {
     if (value == null) return;
+    mqtt.subscribeValveStatus(value);
     setState(() {
       selectedValveId = value;
       selectedPosition = 0;
@@ -135,6 +166,8 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
       lowVoltageBypass = false;
       lowVoltageBypassKnown = false;
       hasActualPosition = false;
+      _lastTelemetryAt = null;
+      _telemetryConnected = false;
     });
     unawaited(_loadSelectedFault(value));
     unawaited(_loadSavedPosition(value));
@@ -188,6 +221,7 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
   @override
   void dispose() {
     statusSubscription?.cancel();
+    _freshnessTimer?.cancel();
     mqtt.dispose();
     super.dispose();
   }
@@ -235,9 +269,19 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
               items: valveIds.map((id) => DropdownMenuItem(value: id, child: Text(id))).toList(),
               onChanged: valveIds.isEmpty ? null : chooseValve,
             ),
-            if (valveIds.isEmpty) ...[
+            if (_registryLoading) ...[
               const SizedBox(height: 8),
-              const Text('No valves saved on MAP. Add the valve from MAP VIEW first.'),
+              const LinearProgressIndicator(),
+              const Text('Loading authorized valves…'),
+            ],
+            if (_registryError != null) ...[
+              const SizedBox(height: 8),
+              Text('Valve registry unavailable: $_registryError', style: const TextStyle(color: Colors.red)),
+              OutlinedButton(onPressed: _loadValveIds, child: const Text('RETRY')),
+            ],
+            if (!_registryLoading && _registryError == null && valveIds.isEmpty) ...[
+              const SizedBox(height: 8),
+              const Text('No valves are assigned to this account.'),
             ],
             if (!widget.isLora) ...[
               const SizedBox(height: 12),
@@ -456,7 +500,22 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
 
   Widget _rssiBars(int level) => Row(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.end, children: List.generate(3, (index) => Container(width: 7, height: 8 + (index * 5), margin: const EdgeInsets.only(left: 3), color: index < level ? Colors.green : Colors.grey.shade300)));
 
-  Widget _statusLine() => Row(children: [const Expanded(child: Text('STATUS')), Text(status, style: const TextStyle(fontWeight: FontWeight.bold))]);
+  String get _telemetryState {
+    if (_lastTelemetryAt == null) return 'UNKNOWN / NO TELEMETRY';
+    if (!_telemetryConnected || DateTime.now().difference(_lastTelemetryAt!) > const Duration(seconds: 90)) return 'OFFLINE / STALE';
+    return 'ONLINE';
+  }
+
+  Widget _statusLine() => Column(children: [
+    Row(children: [const Expanded(child: Text('STATUS')), Text(status, style: const TextStyle(fontWeight: FontWeight.bold))]),
+    const SizedBox(height: 6),
+    Row(children: [
+      const Expanded(child: Text('TELEMETRY')),
+      Text(_telemetryState, style: TextStyle(fontWeight: FontWeight.bold, color: _telemetryState == 'ONLINE' ? Colors.green : Colors.red)),
+    ]),
+    if (_lastTelemetryAt != null)
+      Align(alignment: Alignment.centerRight, child: Text('Last update: ${_lastTelemetryAt!.toLocal().toString().substring(0, 19)}', style: Theme.of(context).textTheme.bodySmall)),
+  ]);
 
   Widget _positionCard() => _card('VALVE CONTROL', Column(children: [
     Text('SET POINT: $selectedPosition%', style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold)),
