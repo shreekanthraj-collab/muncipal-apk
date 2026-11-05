@@ -92,7 +92,7 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
     });
   }
 
-  Future<void> send(
+  Future<bool> send(
     String command, {
     int value = 0,
     Map<String, int>? fields,
