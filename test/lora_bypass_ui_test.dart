@@ -44,6 +44,14 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('SLEEP BYPASS / ACTIVE'), findsOneWidget);
+
+    // The additive valve identity and telemetry rows make the list taller;
+    // scroll the existing test card into the widget tree before asserting it.
+    await tester.scrollUntilVisible(
+      find.text('TEST LOW VOLTAGE'),
+      400,
+      scrollable: find.byType(Scrollable).first,
+    );
     expect(find.text('TEST LOW VOLTAGE'), findsOneWidget);
     expect(find.text('CANCEL BYPASS'), findsOneWidget);
   });
