@@ -2,7 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:orb_valve_app/services/municipal_session.dart';
 
 void main() {
-  Map<String, dynamic> payload({String role = 'LINE_OPERATOR'}) => {
+  Map<String, dynamic> payload({String role = 'ZONE_USER'}) => {
         'access_token': 'token',
         'operator_id': 'operator-1',
         'organization_id': 'org-1',
