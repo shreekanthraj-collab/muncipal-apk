@@ -247,7 +247,7 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
           ]))),
           if (!widget.isLora) _gsmStatusCard() else _loraStatusCard(),
           if (_currentValveHasOcFault) _ocFaultBanner(),
-          if (lowVoltageBypass) _voltageBypassBanner(),
+          if (lowVoltageBypass && !widget.isLora) _voltageBypassBanner(),
           _testFaultCard(),
           _positionCard(),
           _calibrationCard(),
@@ -271,9 +271,9 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text(
-                'FAULT / BYPASS TEST',
-                style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+              Text(
+                widget.isLora ? 'FAULT TEST' : 'FAULT / BYPASS TEST',
+                style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 10),
               Row(
@@ -311,24 +311,26 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => setState(() => lowVoltageBypass = true),
-                      child: const Text('TEST LOW VOLTAGE'),
+              if (!widget.isLora) ...[
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => setState(() => lowVoltageBypass = true),
+                        child: const Text('TEST LOW VOLTAGE'),
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => setState(() => lowVoltageBypass = false),
-                      child: const Text('CANCEL BYPASS'),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => setState(() => lowVoltageBypass = false),
+                        child: const Text('CANCEL BYPASS'),
+                      ),
                     ),
-                  ),
-                ],
-              ),
+                  ],
+                ),
+              ],
             ],
           ),
         ),
@@ -383,8 +385,37 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
     const SizedBox(height: 8),
     const Row(children: [Expanded(child: Text('SF')), Text('SF9')]),
     const SizedBox(height: 8),
+    Row(
+      children: [
+        const Expanded(child: Text('LOW-VOLTAGE BYPASS')),
+        Text(
+          lowVoltageBypass ? 'ACTIVE' : 'INACTIVE',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: lowVoltageBypass ? Colors.red : Colors.green,
+          ),
+        ),
+      ],
+    ),
+    const SizedBox(height: 8),
+    Row(
+      children: [
+        const Expanded(child: Text('ACTUAL VALVE POSITION')),
+        Text(
+          '$selectedPosition% • ${_actualValvePositionLabel()}',
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+      ],
+    ),
+    const SizedBox(height: 8),
     _statusLine(),
   ])));
+
+  String _actualValvePositionLabel() {
+    if (selectedPosition <= 0) return 'CLOSED';
+    if (selectedPosition >= 100) return 'OPEN';
+    return 'PARTIALLY OPEN';
+  }
 
   Widget _rssiBars(int level) => Row(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.end, children: List.generate(3, (index) => Container(width: 7, height: 8 + (index * 5), margin: const EdgeInsets.only(left: 3), color: index < level ? Colors.green : Colors.grey.shade300)));
 
