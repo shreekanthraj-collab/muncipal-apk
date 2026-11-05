@@ -128,6 +128,7 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
     if (value == null) return;
     setState(() {
       selectedValveId = value;
+      selectedPosition = 0;
       status = 'STOPPED';
       communicationId = '';
       gwid = '';
@@ -153,16 +154,17 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
     });
   }
 
-  Future<void> setValve() async {
+  Future<bool> setValve() async {
     final valveId = selectedValveId;
-    if (valveId == null || valveId.isEmpty) return;
+    if (valveId == null || valveId.isEmpty) return false;
     final target = selectedPosition.clamp(0, 100);
     final sent = await send('SET_POSITION', value: target);
-    if (!sent) return;
+    if (!sent) return false;
     await ValvePositionStorage.save(valveId, target);
     if (mounted && selectedValveId == valveId) {
       setState(() => status = 'POSITION $target%');
     }
+    return true;
   }
 
   Future<void> rebindOwner() async {
@@ -463,7 +465,7 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
     const SizedBox(height: 12),
     SizedBox(height: 48, width: double.infinity, child: FilledButton(onPressed: setValve, child: Text('SET % OPEN — $selectedPosition%'))),
     const SizedBox(height: 8),
-    Row(children: [Expanded(child: FilledButton(onPressed: () async { await setValve(); if (mounted) setState(() => status = 'OPENING TO $selectedPosition%'); }, child: const Text('OPEN TO SAVED POSITION'))), const SizedBox(width: 8), Expanded(child: FilledButton(onPressed: () async { await send('CLOSE'); setState(() => status = 'CLOSING'); }, child: const Text('CLOSE')))]),
+    Row(children: [Expanded(child: FilledButton(onPressed: () async { final sent = await setValve(); if (sent && mounted) setState(() => status = 'OPENING TO $selectedPosition%'); }, child: const Text('OPEN'))), const SizedBox(width: 8), Expanded(child: FilledButton(onPressed: () async { await send('CLOSE'); setState(() => status = 'CLOSING'); }, child: const Text('CLOSE')))]),
     const SizedBox(height: 8),
     Row(children: [Expanded(child: FilledButton(onPressed: () async { await send('STOP'); setState(() => status = 'STOPPED'); }, child: const Text('STOP'))), const SizedBox(width: 8), Expanded(child: FilledButton.tonal(onPressed: () async { await send('ESTOP'); setState(() => status = 'E-STOP'); }, child: const Text('E-STOP')))]),
   ]));
