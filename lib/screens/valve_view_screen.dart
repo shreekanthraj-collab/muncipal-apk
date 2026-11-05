@@ -8,6 +8,7 @@ import '../models/valve_data.dart';
 import '../services/aws_service.dart';
 import '../services/valve_storage.dart';
 import '../services/valve_fault_storage.dart';
+import '../services/valve_position_storage.dart';
 
 class ValveViewScreen extends StatefulWidget {
   final bool isLora;
@@ -27,6 +28,7 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
   StreamSubscription<ValveData>? statusSubscription;
   String? selectedValveId;
   int selectedPosition = 0;
+  int actualPosition = 0;
   String status = 'STOPPED';
   String calibration = 'IDLE';
   bool sleepBypass = false;
@@ -37,6 +39,8 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
   String gwid = '';
   bool ocFault = false;
   bool lowVoltageBypass = false;
+  bool lowVoltageBypassKnown = false;
+  bool hasActualPosition = false;
 
   @override
   void initState() {
@@ -60,6 +64,7 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
     });
     if (selectedValveId != null) {
       unawaited(_loadSelectedFault(selectedValveId!));
+      unawaited(_loadSavedPosition(selectedValveId!));
     }
   }
 
@@ -76,16 +81,18 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
     if (selectedValveId != null && data.valveId != selectedValveId) return;
     setState(() {
       status = data.status;
-      selectedPosition = data.actual.clamp(0, 100).toInt();
+      actualPosition = data.actual.clamp(0, 100).toInt();
       communicationId = data.connected ? data.communicationId : '';
       gwid = data.gwid;
       ocFault = data.ocFault;
       lowVoltageBypass = data.lowVoltageBypass;
+      lowVoltageBypassKnown = data.lowVoltageBypassKnown;
+      hasActualPosition = true;
       unawaited(ValveFaultStorage.save(data.valveId, data.ocFault));
     });
   }
 
-  Future<void> send(
+  Future<bool> send(
     String command, {
     int value = 0,
     Map<String, int>? fields,
@@ -107,11 +114,13 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
       days: fields?['days'],
     );
     debugPrint(const JsonEncoder.withIndent('  ').convert(packet.toJson()));
-    if (!mqtt.connected) return;
+    if (!mqtt.connected) return false;
     try {
       await mqtt.sendCommand(packet);
+      return true;
     } catch (_) {
       if (mounted) setState(() => status = 'TRANSPORT ERROR');
+      return false;
     }
   }
 
@@ -119,12 +128,22 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
     if (value == null) return;
     setState(() {
       selectedValveId = value;
+      selectedPosition = 0;
       status = 'STOPPED';
       communicationId = '';
       gwid = '';
       lowVoltageBypass = false;
+      lowVoltageBypassKnown = false;
+      hasActualPosition = false;
     });
     unawaited(_loadSelectedFault(value));
+    unawaited(_loadSavedPosition(value));
+  }
+
+  Future<void> _loadSavedPosition(String valveId) async {
+    final saved = await ValvePositionStorage.load(valveId);
+    if (!mounted || selectedValveId != valveId || saved == null) return;
+    setState(() => selectedPosition = saved);
   }
 
   Future<void> _loadSelectedFault(String valveId) async {
@@ -135,9 +154,17 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
     });
   }
 
-  Future<void> setValve() async {
-    await send('SET_POSITION', value: selectedPosition);
-    if (mounted) setState(() => status = 'POSITION ${selectedPosition}%');
+  Future<bool> setValve() async {
+    final valveId = selectedValveId;
+    if (valveId == null || valveId.isEmpty) return false;
+    final target = selectedPosition.clamp(0, 100);
+    final sent = await send('SET_POSITION', value: target);
+    if (!sent) return false;
+    await ValvePositionStorage.save(valveId, target);
+    if (mounted && selectedValveId == valveId) {
+      setState(() => status = 'POSITION $target%');
+    }
+    return true;
   }
 
   Future<void> rebindOwner() async {
@@ -247,7 +274,7 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
           ]))),
           if (!widget.isLora) _gsmStatusCard() else _loraStatusCard(),
           if (_currentValveHasOcFault) _ocFaultBanner(),
-          if (lowVoltageBypass) _voltageBypassBanner(),
+          if (lowVoltageBypass && !widget.isLora) _voltageBypassBanner(),
           _testFaultCard(),
           _positionCard(),
           _calibrationCard(),
@@ -271,9 +298,9 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text(
-                'FAULT / BYPASS TEST',
-                style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+              Text(
+                widget.isLora ? 'FAULT TEST' : 'FAULT / BYPASS TEST',
+                style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 10),
               Row(
@@ -311,24 +338,26 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => setState(() => lowVoltageBypass = true),
-                      child: const Text('TEST LOW VOLTAGE'),
+              if (!widget.isLora) ...[
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => setState(() => lowVoltageBypass = true),
+                        child: const Text('TEST LOW VOLTAGE'),
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => setState(() => lowVoltageBypass = false),
-                      child: const Text('CANCEL BYPASS'),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => setState(() => lowVoltageBypass = false),
+                        child: const Text('CANCEL BYPASS'),
+                      ),
                     ),
-                  ),
-                ],
-              ),
+                  ],
+                ),
+              ],
             ],
           ),
         ),
@@ -383,8 +412,47 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
     const SizedBox(height: 8),
     const Row(children: [Expanded(child: Text('SF')), Text('SF9')]),
     const SizedBox(height: 8),
+    Row(
+      children: [
+        const Expanded(child: Text('LOW-VOLTAGE BYPASS')),
+        Text(
+          !lowVoltageBypassKnown
+              ? 'UNKNOWN'
+              : lowVoltageBypass
+                  ? 'ACTIVE'
+                  : 'INACTIVE',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: !lowVoltageBypassKnown
+                ? Colors.grey
+                : lowVoltageBypass
+                    ? Colors.red
+                    : Colors.green,
+          ),
+        ),
+      ],
+    ),
+    const SizedBox(height: 8),
+    Row(
+      children: [
+        const Expanded(child: Text('ACTUAL VALVE POSITION')),
+        Text(
+          hasActualPosition
+              ? '$actualPosition% • ${_actualValvePositionLabel()}'
+              : 'UNKNOWN',
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+      ],
+    ),
+    const SizedBox(height: 8),
     _statusLine(),
   ])));
+
+  String _actualValvePositionLabel() {
+    if (actualPosition <= 0) return 'CLOSED';
+    if (actualPosition >= 100) return 'OPEN';
+    return 'PARTIALLY OPEN';
+  }
 
   Widget _rssiBars(int level) => Row(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.end, children: List.generate(3, (index) => Container(width: 7, height: 8 + (index * 5), margin: const EdgeInsets.only(left: 3), color: index < level ? Colors.green : Colors.grey.shade300)));
 
@@ -397,7 +465,7 @@ class _ValveViewScreenState extends State<ValveViewScreen> {
     const SizedBox(height: 12),
     SizedBox(height: 48, width: double.infinity, child: FilledButton(onPressed: setValve, child: Text('SET % OPEN — $selectedPosition%'))),
     const SizedBox(height: 8),
-    Row(children: [Expanded(child: FilledButton(onPressed: () async { await send('OPEN'); setState(() => status = 'OPENING'); }, child: const Text('OPEN'))), const SizedBox(width: 8), Expanded(child: FilledButton(onPressed: () async { await send('CLOSE'); setState(() => status = 'CLOSING'); }, child: const Text('CLOSE')))]),
+    Row(children: [Expanded(child: FilledButton(onPressed: () async { final sent = await setValve(); if (sent && mounted) setState(() => status = 'OPENING TO $selectedPosition%'); }, child: const Text('OPEN'))), const SizedBox(width: 8), Expanded(child: FilledButton(onPressed: () async { await send('CLOSE'); setState(() => status = 'CLOSING'); }, child: const Text('CLOSE')))]),
     const SizedBox(height: 8),
     Row(children: [Expanded(child: FilledButton(onPressed: () async { await send('STOP'); setState(() => status = 'STOPPED'); }, child: const Text('STOP'))), const SizedBox(width: 8), Expanded(child: FilledButton.tonal(onPressed: () async { await send('ESTOP'); setState(() => status = 'E-STOP'); }, child: const Text('E-STOP')))]),
   ]));

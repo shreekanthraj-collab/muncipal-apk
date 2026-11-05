@@ -3,10 +3,10 @@ name: Flutter CI
 on:
   push:
     branches:
-      - fix/admin-app-analyzer-repair
+      - fix/lora-low-voltage-bypass-status-ui
   pull_request:
     branches:
-      - feat/admin-5-page-wiring
+      - fix/admin-app-analyzer-repair
 
 jobs:
   flutter-test:

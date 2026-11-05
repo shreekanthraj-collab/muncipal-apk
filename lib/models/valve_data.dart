@@ -7,6 +7,7 @@ class ValveData {
   final String communicationId;
   final bool ocFault;
   final bool lowVoltageBypass;
+  final bool lowVoltageBypassKnown;
   final String gwid;
 
   const ValveData({
@@ -18,6 +19,7 @@ class ValveData {
     required this.communicationId,
     required this.ocFault,
     required this.lowVoltageBypass,
+    this.lowVoltageBypassKnown = false,
     this.gwid = '',
   });
 
@@ -29,9 +31,14 @@ class ValveData {
       requested: (json['requested'] ?? 0).toInt(),
       actual: (json['actual'] ?? 0).toInt(),
       connected: json['connected'] ?? false,
-      communicationId: (json['communication_id'] ?? json['device_id'] ?? json['thing_name'] ?? '').toString(),
+      communicationId: (json['communication_id'] ??
+              json['device_id'] ??
+              json['thing_name'] ??
+              '')
+          .toString(),
       ocFault: _hasOcFault(json),
       lowVoltageBypass: _hasLowVoltageBypass(json),
+      lowVoltageBypassKnown: _containsLowVoltageBypass(json),
       gwid: rawGwid.toString(),
     );
   }
@@ -45,9 +52,20 @@ class ValveData {
       'connected': connected,
       'communication_id': communicationId,
       'oc_fault': ocFault,
-      'low_voltage_bypass': lowVoltageBypass,
+      if (lowVoltageBypassKnown) 'low_voltage_bypass': lowVoltageBypass,
       'gwid': gwid,
     };
+  }
+
+  static bool _containsLowVoltageBypass(Map<String, dynamic> json) {
+    if (json.containsKey('low_voltage_bypass') ||
+        json.containsKey('lowVoltageBypass')) {
+      return true;
+    }
+    final faults = json['faults'];
+    return faults is Map &&
+        (faults.containsKey('low_voltage_bypass') ||
+            faults.containsKey('lowVoltageBypass'));
   }
 
   static bool _hasLowVoltageBypass(Map<String, dynamic> json) {
@@ -64,8 +82,10 @@ class ValveData {
   }
 
   static bool _hasOcFault(Map<String, dynamic> json) {
-    final direct = json['oc_trip'] ?? json['ocTrip'] ??
-        json['over_current_trip'] ?? json['overCurrentTrip'];
+    final direct = json['oc_trip'] ??
+        json['ocTrip'] ??
+        json['over_current_trip'] ??
+        json['overCurrentTrip'];
     if (direct is bool) return direct;
     if (direct is num) return direct != 0;
     final flags = json['fault_flags'] ?? json['faultFlags'] ?? json['faults'];
