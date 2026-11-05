@@ -4,8 +4,23 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:orb_valve_app/screens/gsm_screen.dart';
 import 'package:orb_valve_app/screens/lora_screen.dart';
+import 'package:orb_valve_app/models/valve_data.dart';
 
 void main() {
+  test('bypass field distinguishes an explicit inactive state from missing data', () {
+    final inactive = ValveData.fromJson({
+      'valve_id': 'LORA-001',
+      'low_voltage_bypass': false,
+    });
+    final missing = ValveData.fromJson({
+      'valve_id': 'LORA-001',
+    });
+
+    expect(inactive.lowVoltageBypassKnown, isTrue);
+    expect(inactive.lowVoltageBypass, isFalse);
+    expect(missing.lowVoltageBypassKnown, isFalse);
+  });
+
   setUp(() {
     SharedPreferences.setMockInitialValues({});
   });
@@ -16,9 +31,9 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('LOW-VOLTAGE BYPASS'), findsOneWidget);
-    expect(find.text('INACTIVE'), findsOneWidget);
+    expect(find.text('UNKNOWN'), findsNWidgets(2));
     expect(find.text('ACTUAL VALVE POSITION'), findsOneWidget);
-    expect(find.textContaining('CLOSED'), findsOneWidget);
+    expect(find.textContaining('CLOSED'), findsNothing);
     expect(find.text('TEST LOW VOLTAGE'), findsNothing);
     expect(find.text('CANCEL BYPASS'), findsNothing);
   });
