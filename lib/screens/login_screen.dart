@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/server_api_service.dart';
+import '../services/municipal_session.dart';
 import 'home_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -12,8 +12,6 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  String role = 'Agent / Operator';
-  final passwordController = TextEditingController();
   final phoneController = TextEditingController();
   final otpController = TextEditingController();
   late final ServerApiService _server;
@@ -24,7 +22,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   void dispose() {
-    passwordController.dispose();
     phoneController.dispose();
     otpController.dispose();
     super.dispose();
@@ -40,25 +37,6 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
     );
   }
-
-  Future<void> login() async {
-    // Provision an existing municipal session for server communication.
-    // This keeps the existing login UI and navigation unchanged.
-    const accessToken = String.fromEnvironment('ORB_MUNICIPAL_ACCESS_TOKEN');
-    const operatorId = String.fromEnvironment('ORB_MUNICIPAL_OPERATOR_ID');
-
-    if (accessToken.isNotEmpty && operatorId.isNotEmpty) {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('municipal_access_token', accessToken);
-      await prefs.setString('municipal_operator_id', operatorId);
-    }
-
-    if (!mounted) return;
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const HomeScreen()),
-    );
-  }
-
 
   Future<void> requestOtp() async {
     final phone = phoneController.text.trim();
@@ -104,19 +82,9 @@ class _LoginScreenState extends State<LoginScreen> {
       _error = null;
     });
     try {
-      final response = await _server.verifyMunicipalOtp(
-        phone: phone,
-        otp: otp,
-      );
-      final accessToken = response['access_token']?.toString();
-      final operatorId = response['operator_id']?.toString();
-      if (accessToken == null || accessToken.isEmpty ||
-          operatorId == null || operatorId.isEmpty) {
-        throw const FormatException('Incomplete municipal session returned.');
-      }
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('municipal_access_token', accessToken);
-      await prefs.setString('municipal_operator_id', operatorId);
+      final response = await _server.verifyMunicipalOtp(phone: phone, otp: otp);
+      final session = MunicipalSession.fromJson(response);
+      await MunicipalSessionStorage.save(session);
       if (!mounted) return;
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => const HomeScreen()),
@@ -124,6 +92,9 @@ class _LoginScreenState extends State<LoginScreen> {
     } on ServerApiException catch (e) {
       if (!mounted) return;
       setState(() => _error = _serverError(e));
+    } on FormatException catch (e) {
+      if (!mounted) return;
+      setState(() => _error = 'Invalid municipal session: ${e.message}');
     } catch (e) {
       if (!mounted) return;
       setState(() => _error = 'Unable to verify OTP: ${e}');
@@ -239,7 +210,10 @@ class _LoginScreenState extends State<LoginScreen> {
             children: [
               const Icon(Icons.water_drop, size: 72, color: Colors.blue),
               const SizedBox(height: 8),
-              const Text('Smart Valve Management', style: TextStyle(fontSize: 25, fontWeight: FontWeight.bold)),
+              const Text(
+                'Smart Valve Management',
+                style: TextStyle(fontSize: 25, fontWeight: FontWeight.bold),
+              ),
               const Text('Monitor  •  Control  •  Manage'),
               const SizedBox(height: 24),
               Card(
@@ -248,46 +222,27 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      const Text('Login', textAlign: TextAlign.center, style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 6),
-                      const Text('Select your role to continue', textAlign: TextAlign.center),
-                      const SizedBox(height: 18),
-                      SegmentedButton<String>(
-                        segments: const [
-                          ButtonSegment(value: 'Admin', label: Text('Admin'), icon: Icon(Icons.admin_panel_settings)),
-                          ButtonSegment(value: 'Agent / Operator', label: Text('Agent / Operator'), icon: Icon(Icons.groups)),
-                        ],
-                        selected: {role},
-                        onSelectionChanged: (value) => setState(() => role = value.first),
+                      const Text(
+                        'Municipal Login',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Your role and access scope are verified by the municipal server.',
+                        textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 18),
-                      if (role == 'Agent / Operator')
-                        _operatorLogin()
-                      else ...[
-                        TextField(
-                          controller: passwordController,
-                          obscureText: true,
-                          decoration: const InputDecoration(labelText: 'Password', border: OutlineInputBorder(), prefixIcon: Icon(Icons.lock)),
-                        ),
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: TextButton(onPressed: forgotPassword, child: const Text('Forgot Password?')),
-                        ),
-                        FilledButton(
-                          onPressed: _loading ? null : login,
-                          child: const Padding(padding: EdgeInsets.all(12), child: Text('LOGIN')),
-                        ),
-                        const SizedBox(height: 14),
-                        const ListTile(
-                          leading: Icon(Icons.verified_user),
-                          title: Text('Authentication Required'),
-                          subtitle: Text('Authentication is required for the registered mobile number.'),
-                        ),
-                      ],
+                      _operatorLogin(),
+                      const SizedBox(height: 12),
                       const ListTile(
-                        leading: Icon(Icons.phone_android),
-                        title: Text('Phone / mobile change'),
-                        subtitle: Text('Re-authentication is required if the app mobile number or phone changes.'),
+                        contentPadding: EdgeInsets.zero,
+                        leading: Icon(Icons.verified_user),
+                        title: Text('Server Authentication'),
+                        subtitle: Text(
+                          'Only the registered mobile number can receive an OTP. '
+                          'The server determines whether the account is Admin, Ward Admin, or Zone User.',
+                        ),
                       ),
                     ],
                   ),
